@@ -4,17 +4,15 @@ train_model.py
 Trains a Multiple Linear Regression model to predict calamansi juice yield.
 
 Dataset source: Real experimental data (Small / Medium / Large calamansi)
-  - Weight (g) and Juice (ml) were measured during the experiment
-  - Ripeness was NOT recorded — it was estimated from the juice/weight ratio:
-      ratio = Juice / Weight
-      < 0.30   → 1  Unripe     (dark green skin)
-      0.30-0.45 → 2  Ripe       (light green / yellowish)
-      > 0.45   → 3  Overripe   (yellow / soft skin)
+  - Weight (g), Juice (ml), and Ripeness were all manually recorded
+    during the data collection experiment.
 
-  Future datasets will have ripeness entered directly by the researcher.
+      1  Unripe     (dark green skin)
+      2  Ripe       (light green / yellowish)
+      3  Overripe   (yellow / soft skin)
 
 Steps:
-  1. Load dataset.csv  (already contains estimated Ripeness column)
+  1. Load dataset.csv  (contains Weight, Size, Juice, Ripeness columns)
   2. Train LinearRegression on Weight, Size, Ripeness → Juice (ml)
   3. Evaluate and save as model.pkl
 """
@@ -46,9 +44,9 @@ print(df.head(8).to_string(index=False))
 # ─────────────────────────────────────────────
 # 2. RIPENESS ALREADY IN DATASET
 # ─────────────────────────────────────────────
-# Ripeness was estimated from Juice/Weight ratio during dataset creation.
+# Ripeness was manually recorded during data collection.
 # This column already exists in dataset.csv — no re-engineering needed.
-print("\n✔  Ripeness distribution (estimated from juice/weight ratio):")
+print("\n✔  Ripeness distribution (manually recorded during experiment):")
 counts = df["Ripeness"].value_counts().sort_index()
 labels = {1: "Unripe", 2: "Ripe", 3: "Overripe"}
 for level, count in counts.items():

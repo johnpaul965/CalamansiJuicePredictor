@@ -51,7 +51,6 @@ def create_tables():
             large_count     INTEGER NOT NULL,
             ripeness        INTEGER NOT NULL,
             predicted_juice REAL    NOT NULL,
-            yield_class     TEXT    NOT NULL,
             timestamp       TEXT    NOT NULL
         )
     """)
@@ -121,17 +120,17 @@ def update_user_role(user_id: int, new_role: str):
 #  DATABASE — PREDICTION FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
 def save_prediction(username, weight_g, small, medium, large,
-                    ripeness, predicted_juice, yield_class):
+                    ripeness, predicted_juice):
     conn = sqlite3.connect(DB_PATH)
     c    = conn.cursor()
     c.execute("""
         INSERT INTO predictions
             (username, weight_g, small_count, medium_count, large_count,
-             ripeness, predicted_juice, yield_class, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ripeness, predicted_juice, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         username, weight_g, small, medium, large,
-        ripeness, round(predicted_juice, 4), yield_class,
+        ripeness, round(predicted_juice, 4),
         datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
     conn.commit()
@@ -169,56 +168,6 @@ def load_model():
     if not os.path.exists(MODEL_PATH):
         return None
     return joblib.load(MODEL_PATH)
-
-
-def classify_yield(predicted_ml: float, weight_g: float):
-    if weight_g <= 0:
-        return "Unknown", "⚠️ Unknown"
-    ratio = (predicted_ml / weight_g) * 100
-    if ratio < 40:
-        return "Low",    "🔴 Low Yield (< 40%)"
-    elif ratio <= 50:
-        return "Medium", "🟡 Medium Yield (40–50%)"
-    else:
-        return "High",   "🟢 High Yield (> 50%)"
-
-
-def get_recommendation(yield_class: str, predicted_ml: float, predicted_liters: float) -> dict:
-    """Return juice usage recommendations based on yield classification."""
-    if yield_class == "High":
-        return {
-            "summary": "🟢 Excellent yield! Your calamansi produced a high amount of juice.",
-            "uses": [
-                "🥤 **Calamansi Juice Drink** — Mix with water and sugar for a refreshing drink. Your yield is enough for a good batch.",
-                "🍾 **Calamansi Concentrate** — Reduce the juice to make a concentrated syrup for longer shelf life.",
-                "🫙 **Bottled Juice** — Bottle and sell fresh calamansi juice. High yield means good profit margin.",
-                "🍰 **Flavoring / Condiment** — Use as a souring agent for sinigang, marinades, or salad dressings.",
-                "💆 **Calamansi Extract** — Extract for skincare or health products (calamansi is rich in Vitamin C).",
-            ],
-            "tip": "💡 Since yield is high, prioritize bottling or selling fresh — calamansi juice is best consumed within 2–3 days without preservatives.",
-        }
-    elif yield_class == "Medium":
-        return {
-            "summary": "🟡 Good yield. Your calamansi produced a moderate amount of juice.",
-            "uses": [
-                "🥤 **Calamansi Juice Drink** — Enough for a small batch of fresh juice drinks.",
-                "🍰 **Flavoring** — Best used as a souring agent or condiment for cooking.",
-                "🫙 **Mixed Juice** — Combine with other citrus juices to extend volume.",
-                "🧴 **Calamansi Honey Mix** — Mix with honey for a health tonic drink.",
-            ],
-            "tip": "💡 Medium yield is ideal for personal or household use. Consider using as a cooking ingredient to maximize value.",
-        }
-    else:  # Low
-        return {
-            "summary": "🔴 Low yield. Your calamansi produced a small amount of juice.",
-            "uses": [
-                "🍰 **Cooking Ingredient** — Best used as a souring agent or flavoring in small dishes.",
-                "🧴 **Calamansi Oil/Zest** — Use the peel for zest or extract calamansi oil instead.",
-                "🫙 **Calamansi Vinegar** — Ferment the juice to make calamansi vinegar — low juice volume works fine.",
-                "💆 **Skincare Use** — Apply directly to skin (small amounts are enough for topical use).",
-            ],
-            "tip": "💡 Low yield may be due to unripe or very small calamansi. Consider waiting for more ripeness before squeezing next time.",
-        }
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -345,11 +294,9 @@ def page_user_dashboard():
         You provide:
         - **Total weight** of your calamansi (in kg)
         - **Count** of small / medium / large calamansi
-        - **Estimated ripeness** (1 = Unripe → 3 = Overripe)
+        - **Ripeness** (1 = Unripe → 3 = Overripe), manually recorded during data collection
 
-        The model predicts juice yield in **millilitres** and converts it to **litres**,
-        then classifies it as 🔴 Low / 🟡 Medium / 🟢 High — and gives you
-        **recommendations** on what to do with your juice.
+        The model predicts juice yield in **millilitres** and converts it to **litres**.
         """)
 
     # ── PREDICT ──────────────────────────────────────────────
@@ -390,7 +337,7 @@ def page_user_dashboard():
             )
 
         ripeness = st.select_slider(
-            "🌿 Estimated Ripeness",
+            "🌿 Ripeness",
             options=[1, 2, 3],
             value=2,
             format_func=lambda x: {
@@ -426,16 +373,12 @@ def page_user_dashboard():
                     predicted_ml = float(model.predict(features)[0])
                 predicted_ml    = max(predicted_ml, 0)
                 predicted_liters = predicted_ml / 1000
-                yield_class, yield_label = classify_yield(predicted_ml, weight_g)
 
                 # ── Results ───────────────────────────────────
                 st.markdown("## 📊 Prediction Result")
-                r1, r2, r3 = st.columns(3)
+                r1, r2 = st.columns(2)
                 r1.metric("🧃 Juice (ml)",     f"{predicted_ml:.2f} ml")
                 r2.metric("🍶 Juice (liters)", f"{predicted_liters:.4f} L")
-                r3.metric("📈 Yield Class",    yield_class)
-
-                st.info(f"**Yield Classification:** {yield_label}")
 
                 with st.expander("📌 Input Summary"):
                     st.write({
@@ -445,22 +388,11 @@ def page_user_dashboard():
                         "Ripeness Score":    ripeness,
                     })
 
-                # ── Recommendations ───────────────────────────
-                st.markdown("---")
-                st.markdown("## 💡 Recommendations")
-                rec = get_recommendation(yield_class, predicted_ml, predicted_liters)
-
-                st.markdown(f"### {rec['summary']}")
-                st.markdown("#### 🧃 What You Can Do With Your Calamansi Juice:")
-                for use in rec["uses"]:
-                    st.markdown(f"- {use}")
-                st.success(rec["tip"])
-
                 # Save to DB
                 save_prediction(
                     username, weight_g,
                     small_count, medium_count, large_count,
-                    ripeness, predicted_ml, yield_class
+                    ripeness, predicted_ml
                 )
                 st.success("✅ Prediction saved to your history!")
 
@@ -481,7 +413,6 @@ def page_user_dashboard():
                 "large_count":     "Large",
                 "ripeness":        "Ripeness",
                 "predicted_juice": "Juice (ml)",
-                "yield_class":     "Class",
                 "timestamp":       "Date & Time",
             })
             df["Juice (L)"] = (df["Juice (ml)"] / 1000).round(4)
@@ -598,12 +529,6 @@ def page_admin_dashboard():
             m3.metric("Avg Juice (ml)",     f"{avg_juice:.2f}")
 
             st.markdown("---")
-            st.subheader("Yield Class Breakdown")
-            class_counts = df["yield_class"].value_counts().reset_index()
-            class_counts.columns = ["Class", "Count"]
-            st.bar_chart(class_counts.set_index("Class"))
-
-            st.markdown("---")
             st.subheader("All Records")
             df_display = df.rename(columns={
                 "id":              "ID",
@@ -614,7 +539,6 @@ def page_admin_dashboard():
                 "large_count":     "Large",
                 "ripeness":        "Ripeness",
                 "predicted_juice": "Juice (ml)",
-                "yield_class":     "Class",
                 "timestamp":       "Date & Time",
             })
             df_display["Juice (L)"] = (df_display["Juice (ml)"] / 1000).round(4)
@@ -644,13 +568,13 @@ def page_admin_dashboard():
         st.bar_chart(size_df.set_index("Size"))
 
         # ── Ripeness distribution ──────────────────────────────
-        st.subheader("🌿 Estimated Ripeness Distribution")
+        st.subheader("🌿 Ripeness Distribution")
         ripe_df = pd.DataFrame(
             list(MODEL_RESULTS["ripeness_dist"].items()),
             columns=["Ripeness Level", "Count"]
         )
         st.bar_chart(ripe_df.set_index("Ripeness Level"))
-        st.caption("Ripeness was estimated from the juice-to-weight ratio since it was not recorded during the experiment.")
+        st.caption("Ripeness was manually recorded during the data collection experiment.")
 
         st.markdown("---")
 
@@ -695,7 +619,7 @@ def page_admin_dashboard():
 
         st.info("""
         **Key Insight:** Ripeness has the strongest effect per unit (+1.04 ml per level),
-        followed by weight (+0.32 ml per gram) and size (+0.32 ml per size step.
+        followed by weight (+0.32 ml per gram) and size (+0.32 ml per size step).
         This means a riper calamansi produces significantly more juice regardless of size.
         """)
 
