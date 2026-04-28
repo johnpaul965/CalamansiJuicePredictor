@@ -171,21 +171,56 @@ def load_model():
 
 
 # ═══════════════════════════════════════════════════════════════
-#  MODEL RESULTS SUMMARY (for Admin dashboard)
+#  MODEL RESULTS SUMMARY (for Admin dashboard) — computed live
 # ═══════════════════════════════════════════════════════════════
-MODEL_RESULTS = {
-    "dataset_rows": 295,
-    "training_samples": 236,
-    "test_samples": 59,
-    "mae": 0.3430,
-    "r2": 0.8830,
-    "coef_weight": 0.3158,
-    "coef_size": 0.3236,
-    "coef_ripeness": 1.0418,
-    "intercept": -2.0515,
-    "ripeness_dist": {"Unripe (1)": 26, "Ripe (2)": 233, "Overripe (3)": 36},
-    "size_dist": {"Small": 137, "Medium": 109, "Large": 49},
-}
+DATASET_PATH = os.path.join(BASE_DIR, "dataset.csv")
+
+
+@st.cache_data(show_spinner=False)
+def get_model_results():
+    """Compute model results live from dataset.csv and model.pkl."""
+    if not (os.path.exists(DATASET_PATH) and os.path.exists(MODEL_PATH)):
+        return None
+
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_absolute_error, r2_score
+
+    df = pd.read_csv(DATASET_PATH)
+    X = df[["Weight", "Size", "Ripeness"]]
+    y = df["Juice"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    model = joblib.load(MODEL_PATH)
+    y_pred = model.predict(X_test)
+
+    size_labels = {1: "Small", 2: "Medium", 3: "Large"}
+    ripe_labels = {1: "Unripe (1)", 2: "Ripe (2)", 3: "Overripe (3)"}
+
+    size_counts = df["Size"].value_counts().sort_index()
+    ripe_counts = df["Ripeness"].value_counts().sort_index()
+
+    coefs = dict(zip(X.columns, model.coef_))
+
+    return {
+        "dataset_rows": int(len(df)),
+        "training_samples": int(len(X_train)),
+        "test_samples": int(len(X_test)),
+        "mae": float(mean_absolute_error(y_test, y_pred)),
+        "r2": float(r2_score(y_test, y_pred)),
+        "coef_weight": float(coefs.get("Weight", 0.0)),
+        "coef_size": float(coefs.get("Size", 0.0)),
+        "coef_ripeness": float(coefs.get("Ripeness", 0.0)),
+        "intercept": float(model.intercept_),
+        "ripeness_dist": {
+            ripe_labels.get(int(k), str(k)): int(v) for k, v in ripe_counts.items()
+        },
+        "size_dist": {
+            size_labels.get(int(k), str(k)): int(v) for k, v in size_counts.items()
+        },
+    }
 
 # ═══════════════════════════════════════════════════════════════
 #  PAGE — LOGIN / REGISTER
@@ -550,19 +585,24 @@ def page_admin_dashboard():
         st.markdown("Results from training the Multiple Linear Regression model on your real calamansi dataset.")
         st.markdown("---")
 
+        mr = get_model_results()
+        if mr is None:
+            st.error("❌ Dataset or model not found. Please ensure `dataset.csv` and `model.pkl` exist.")
+            return
+
         # ── Dataset summary ───────────────────────────────────
         st.subheader("📂 Dataset Summary")
         d1, d2, d3 = st.columns(3)
-        d1.metric("Total Samples",    MODEL_RESULTS["dataset_rows"])
-        d2.metric("Training Samples", MODEL_RESULTS["training_samples"])
-        d3.metric("Test Samples",     MODEL_RESULTS["test_samples"])
+        d1.metric("Total Samples",    mr["dataset_rows"])
+        d2.metric("Training Samples", mr["training_samples"])
+        d3.metric("Test Samples",     mr["test_samples"])
 
         st.markdown("---")
 
         # ── Size distribution ─────────────────────────────────
         st.subheader("📏 Size Distribution")
         size_df = pd.DataFrame(
-            list(MODEL_RESULTS["size_dist"].items()),
+            list(mr["size_dist"].items()),
             columns=["Size", "Count"]
         )
         st.bar_chart(size_df.set_index("Size"))
@@ -570,7 +610,7 @@ def page_admin_dashboard():
         # ── Ripeness distribution ──────────────────────────────
         st.subheader("🌿 Ripeness Distribution")
         ripe_df = pd.DataFrame(
-            list(MODEL_RESULTS["ripeness_dist"].items()),
+            list(mr["ripeness_dist"].items()),
             columns=["Ripeness Level", "Count"]
         )
         st.bar_chart(ripe_df.set_index("Ripeness Level"))
@@ -583,16 +623,16 @@ def page_admin_dashboard():
         p1, p2 = st.columns(2)
         p1.metric(
             "R² Score",
-            f"{MODEL_RESULTS['r2']:.4f}",
-            help="Closer to 1.0 = better. 0.88 means the model explains 88% of juice yield variation."
+            f"{mr['r2']:.4f}",
+            help="Closer to 1.0 = better. The higher the score, the more juice yield variation the model explains."
         )
         p2.metric(
             "Mean Absolute Error",
-            f"{MODEL_RESULTS['mae']:.4f} ml",
-            help="On average, predictions are off by only 0.34 ml — very accurate."
+            f"{mr['mae']:.4f} ml",
+            help="Average difference between predicted and actual juice yield in ml."
         )
 
-        st.progress(MODEL_RESULTS["r2"], text=f"Model Accuracy: {MODEL_RESULTS['r2']*100:.1f}%")
+        st.progress(max(0.0, min(1.0, mr["r2"])), text=f"Model Accuracy: {mr['r2']*100:.1f}%")
 
         st.markdown("---")
 
@@ -603,40 +643,51 @@ def page_admin_dashboard():
         coef_data = {
             "Feature":     ["Weight (g)", "Size (1–3)", "Ripeness (1–3)", "Intercept"],
             "Coefficient": [
-                MODEL_RESULTS["coef_weight"],
-                MODEL_RESULTS["coef_size"],
-                MODEL_RESULTS["coef_ripeness"],
-                MODEL_RESULTS["intercept"]
+                mr["coef_weight"],
+                mr["coef_size"],
+                mr["coef_ripeness"],
+                mr["intercept"]
             ],
             "Meaning": [
-                "Every 1g more weight → +0.3158 ml juice",
-                "Each size step up (S→M→L) → +0.3236 ml juice",
-                "Each ripeness level up → +1.0418 ml juice",
+                f"Every 1g more weight → {mr['coef_weight']:+.4f} ml juice",
+                f"Each size step up (S→M→L) → {mr['coef_size']:+.4f} ml juice",
+                f"Each ripeness level up → {mr['coef_ripeness']:+.4f} ml juice",
                 "Base value when all inputs are zero"
             ]
         }
         st.dataframe(pd.DataFrame(coef_data), use_container_width=True)
 
-        st.info("""
-        **Key Insight:** Ripeness has the strongest effect per unit (+1.04 ml per level),
-        followed by weight (+0.32 ml per gram) and size (+0.32 ml per size step).
-        This means a riper calamansi produces significantly more juice regardless of size.
-        """)
+        dominant = max(
+            [("Ripeness", mr["coef_ripeness"]),
+             ("Weight",   mr["coef_weight"]),
+             ("Size",     mr["coef_size"])],
+            key=lambda x: abs(x[1])
+        )
+        st.info(
+            f"**Key Insight:** **{dominant[0]}** has the strongest effect per unit "
+            f"({dominant[1]:+.4f} ml per level). This means it is the biggest driver "
+            f"of juice yield in the current model."
+        )
 
         st.markdown("---")
 
         # ── Formula ───────────────────────────────────────────
         st.subheader("🧮 Prediction Formula")
-        st.code("""
+        st.code(
+            f"""
 Predicted Juice (ml) =
-    (Weight × 0.3158)
-  + (Size   × 0.3236)
-  + (Ripeness × 1.0418)
-  + (-2.0515)
-        """)
+    (Weight × {mr['coef_weight']:.4f})
+  + (Size   × {mr['coef_size']:.4f})
+  + (Ripeness × {mr['coef_ripeness']:.4f})
+  + ({mr['intercept']:.4f})
+            """
+        )
 
         st.markdown("---")
-        st.caption("Model: Multiple Linear Regression | Library: scikit-learn | Dataset: 295 real calamansi samples")
+        st.caption(
+            f"Model: Multiple Linear Regression | Library: scikit-learn | "
+            f"Dataset: {mr['dataset_rows']} real calamansi samples"
+        )
 
     # ── LOGOUT ───────────────────────────────────────────────
     elif menu == "🚪 Logout":
