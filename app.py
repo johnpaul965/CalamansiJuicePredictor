@@ -1,5 +1,6 @@
 """
 app.py — Calamansi Juice Yield Predictor
+         Three algorithm comparison: Simple LR, Multiple LR, Polynomial Regression
 """
 
 import streamlit as st
@@ -7,15 +8,21 @@ import sqlite3
 import hashlib
 import joblib
 import os
+import json
 import numpy as np
 import pandas as pd
 from datetime import datetime
 
-BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-DB_PATH    = os.path.join(BASE_DIR, "database.db")
-MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
+BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
+DB_PATH       = os.path.join(BASE_DIR, "database.db")
+METRICS_PATH  = os.path.join(BASE_DIR, "model_metrics.json")
 
-# Default admin account seeded automatically on first run
+MODEL_PATHS = {
+    "Simple Linear Regression":    os.path.join(BASE_DIR, "model_simple.pkl"),
+    "Multiple Linear Regression":  os.path.join(BASE_DIR, "model_multiple.pkl"),
+    "Polynomial Regression (d=2)": os.path.join(BASE_DIR, "model_poly.pkl"),
+}
+
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
 
@@ -26,7 +33,7 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 # ═══════════════════════════════════════════════════════════════
-#  DATABASE — TABLES (seeds a default admin if missing)
+#  DATABASE — TABLES
 # ═══════════════════════════════════════════════════════════════
 def create_tables():
     conn = sqlite3.connect(DB_PATH)
@@ -49,13 +56,13 @@ def create_tables():
             small_count     INTEGER NOT NULL,
             medium_count    INTEGER NOT NULL,
             large_count     INTEGER NOT NULL,
-            ripeness        INTEGER NOT NULL,
+            algorithm       TEXT    NOT NULL,
             predicted_juice REAL    NOT NULL,
             timestamp       TEXT    NOT NULL
         )
     """)
 
-    # Seed the default admin account if it does not exist
+    # Seed default admin
     c.execute("SELECT id FROM users WHERE username = ?", (DEFAULT_ADMIN_USER,))
     if c.fetchone() is None:
         c.execute(
@@ -69,7 +76,7 @@ def create_tables():
 # ═══════════════════════════════════════════════════════════════
 #  DATABASE — USER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
-def register_user(username: str, password: str, role: str = "user"):
+def register_user(username, password, role="user"):
     if not username.strip() or not password.strip():
         return False, "Username and password cannot be empty."
     if len(password) < 6:
@@ -88,7 +95,7 @@ def register_user(username: str, password: str, role: str = "user"):
         return False, f"Username '{username}' is already taken."
 
 
-def login_user(username: str, password: str):
+def login_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
@@ -101,7 +108,7 @@ def login_user(username: str, password: str):
     return dict(row) if row else None
 
 
-def delete_user(user_id: int):
+def delete_user(user_id):
     conn = sqlite3.connect(DB_PATH)
     c    = conn.cursor()
     c.execute("DELETE FROM users WHERE id = ?", (user_id,))
@@ -109,7 +116,7 @@ def delete_user(user_id: int):
     conn.close()
 
 
-def update_user_role(user_id: int, new_role: str):
+def update_user_role(user_id, new_role):
     conn = sqlite3.connect(DB_PATH)
     c    = conn.cursor()
     c.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
@@ -119,25 +126,24 @@ def update_user_role(user_id: int, new_role: str):
 # ═══════════════════════════════════════════════════════════════
 #  DATABASE — PREDICTION FUNCTIONS
 # ═══════════════════════════════════════════════════════════════
-def save_prediction(username, weight_g, small, medium, large,
-                    ripeness, predicted_juice):
+def save_prediction(username, weight_g, small, medium, large, algorithm, predicted_juice):
     conn = sqlite3.connect(DB_PATH)
     c    = conn.cursor()
     c.execute("""
         INSERT INTO predictions
             (username, weight_g, small_count, medium_count, large_count,
-             ripeness, predicted_juice, timestamp)
+             algorithm, predicted_juice, timestamp)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         username, weight_g, small, medium, large,
-        ripeness, round(predicted_juice, 4),
+        algorithm, round(predicted_juice, 4),
         datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
     conn.commit()
     conn.close()
 
 
-def get_user_history(username: str) -> pd.DataFrame:
+def get_user_history(username):
     conn = sqlite3.connect(DB_PATH)
     df   = pd.read_sql_query(
         "SELECT * FROM predictions WHERE username = ? ORDER BY id DESC",
@@ -147,86 +153,54 @@ def get_user_history(username: str) -> pd.DataFrame:
     return df
 
 
-def get_all_predictions() -> pd.DataFrame:
+def get_all_predictions():
     conn = sqlite3.connect(DB_PATH)
     df   = pd.read_sql_query("SELECT * FROM predictions ORDER BY id DESC", conn)
     conn.close()
     return df
 
 
-def get_all_users() -> pd.DataFrame:
+def get_all_users():
     conn = sqlite3.connect(DB_PATH)
     df   = pd.read_sql_query("SELECT id, username, role FROM users ORDER BY id", conn)
     conn.close()
     return df
 
 # ═══════════════════════════════════════════════════════════════
-#  ML MODEL
+#  ML MODELS
 # ═══════════════════════════════════════════════════════════════
 @st.cache_resource
-def load_model():
-    if not os.path.exists(MODEL_PATH):
+def load_models():
+    models = {}
+    for name, path in MODEL_PATHS.items():
+        if os.path.exists(path):
+            models[name] = joblib.load(path)
+    return models
+
+
+@st.cache_data
+def load_metrics():
+    if not os.path.exists(METRICS_PATH):
         return None
-    return joblib.load(MODEL_PATH)
+    with open(METRICS_PATH) as f:
+        return json.load(f)
 
 
-# ═══════════════════════════════════════════════════════════════
-#  MODEL RESULTS SUMMARY (for Admin dashboard) — computed live
-# ═══════════════════════════════════════════════════════════════
-DATASET_PATH = os.path.join(BASE_DIR, "dataset.csv")
-
-
-@st.cache_data(show_spinner=False)
-def get_model_results():
-    """Compute model results live from dataset.csv and model.pkl."""
-    if not (os.path.exists(DATASET_PATH) and os.path.exists(MODEL_PATH)):
-        return None
-
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import mean_absolute_error, r2_score
-
-    df = pd.read_csv(DATASET_PATH)
-    X = df[["Weight", "Size", "Ripeness"]]
-    y = df["Juice"]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    model = joblib.load(MODEL_PATH)
-    y_pred = model.predict(X_test)
-
-    size_labels = {1: "Small", 2: "Medium", 3: "Large"}
-    ripe_labels = {1: "Unripe (1)", 2: "Ripe (2)", 3: "Overripe (3)"}
-
-    size_counts = df["Size"].value_counts().sort_index()
-    ripe_counts = df["Ripeness"].value_counts().sort_index()
-
-    coefs = dict(zip(X.columns, model.coef_))
-
-    return {
-        "dataset_rows": int(len(df)),
-        "training_samples": int(len(X_train)),
-        "test_samples": int(len(X_test)),
-        "mae": float(mean_absolute_error(y_test, y_pred)),
-        "r2": float(r2_score(y_test, y_pred)),
-        "coef_weight": float(coefs.get("Weight", 0.0)),
-        "coef_size": float(coefs.get("Size", 0.0)),
-        "coef_ripeness": float(coefs.get("Ripeness", 0.0)),
-        "intercept": float(model.intercept_),
-        "ripeness_dist": {
-            ripe_labels.get(int(k), str(k)): int(v) for k, v in ripe_counts.items()
-        },
-        "size_dist": {
-            size_labels.get(int(k), str(k)): int(v) for k, v in size_counts.items()
-        },
-    }
+def predict_juice(model, algorithm, weight_g, avg_size):
+    """Run prediction — Simple LR uses only weight; others use weight + size."""
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if algorithm == "Simple Linear Regression":
+            features = np.array([[weight_g]])
+        else:
+            features = np.array([[weight_g, avg_size]])
+        return max(float(model.predict(features)[0]), 0)
 
 # ═══════════════════════════════════════════════════════════════
-#  PAGE — LOGIN / REGISTER
+#  PAGE — AUTH
 # ═══════════════════════════════════════════════════════════════
-def _do_login(username: str, password: str, expected_role: str):
-    """Shared login handler that enforces the chosen role."""
+def _do_login(username, password, expected_role):
     if not username or not password:
         st.error("Please fill in both fields.")
         return
@@ -236,8 +210,8 @@ def _do_login(username: str, password: str, expected_role: str):
         return
     if user["role"] != expected_role:
         st.error(
-            f"❌ This account is registered as **{user['role']}**, not "
-            f"**{expected_role}**. Please use the correct login page."
+            f"❌ This account is registered as **{user['role']}**, "
+            f"not **{expected_role}**."
         )
         return
     st.session_state["logged_in"] = True
@@ -250,23 +224,17 @@ def page_auth():
     st.title("🍋 Calamansi Juice Yield Predictor")
     st.markdown("---")
 
-    # Account-type selector — keeps user and admin entry points fully separate
     account_type = st.radio(
-        "Login as",
-        ["👤 User", "🛡️ Admin"],
-        horizontal=True,
-        key="auth_account_type",
+        "Login as", ["👤 User", "🛡️ Admin"],
+        horizontal=True, key="auth_account_type"
     )
-
     st.markdown("---")
 
-    # ─── USER ENTRY ─────────────────────────────────────────────
     if account_type == "👤 User":
         tab_login, tab_register = st.tabs(["🔑 User Login", "📝 Register"])
 
         with tab_login:
             st.subheader("👤 User Login")
-            st.caption("Log in with your registered user account.")
             username = st.text_input("Username", key="user_login_user")
             password = st.text_input("Password", type="password", key="user_login_pass")
             if st.button("Login as User", use_container_width=True, type="primary"):
@@ -282,12 +250,7 @@ def page_auth():
                     st.error("❌ Passwords do not match.")
                 else:
                     ok, msg = register_user(new_user, new_pass, role="user")
-                    if ok:
-                        st.success(f"✅ {msg}")
-                    else:
-                        st.error(f"❌ {msg}")
-
-    # ─── ADMIN ENTRY ────────────────────────────────────────────
+                    st.success(f"✅ {msg}") if ok else st.error(f"❌ {msg}")
     else:
         st.subheader("🛡️ Admin Login")
         st.caption("Restricted area — admin credentials required.")
@@ -319,19 +282,27 @@ def page_user_dashboard():
         st.markdown("""
         ### What can you do here?
 
-        | Section       | Description                                         |
-        |---------------|-----------------------------------------------------|
-        | 🔮 Predict    | Enter calamansi details and get a juice yield estimate |
-        | 📋 History    | Review all your past predictions                    |
+        | Section       | Description                                              |
+        |---------------|----------------------------------------------------------|
+        | 🔮 Predict    | Enter calamansi details and get a juice yield estimate   |
+        | 📋 History    | Review all your past predictions                         |
 
         ### How Prediction Works
-        The system uses **Multiple Linear Regression** trained on **295 real calamansi samples**.
+        The system compares **three regression algorithms** trained on **295 real calamansi samples**.
         You provide:
         - **Total weight** of your calamansi (in kg)
         - **Count** of small / medium / large calamansi
-        - **Ripeness** (1 = Unripe → 3 = Overripe), manually recorded during data collection
+        - **Which algorithm** you want to use for prediction
 
         The model predicts juice yield in **millilitres** and converts it to **litres**.
+
+        ### The Three Algorithms
+
+        | Algorithm | Features Used | Description |
+        |-----------|---------------|-------------|
+        | Simple Linear Regression | Weight only | Baseline — one predictor |
+        | Multiple Linear Regression | Weight + Size | Two predictors, linear |
+        | Polynomial Regression (d=2) | Weight + Size + interactions | Captures curved relationships |
         """)
 
     # ── PREDICT ──────────────────────────────────────────────
@@ -340,13 +311,12 @@ def page_user_dashboard():
         st.markdown("Fill in the details about your calamansi below.")
         st.markdown("---")
 
-        model = load_model()
-        if model is None:
-            st.error("❌ Model not found. Please run `python train_model.py` first.")
+        models = load_models()
+        if not models:
+            st.error("❌ Models not found. Please run `python train_model.py` first.")
             return
 
         col1, col2 = st.columns(2)
-
         with col1:
             weight_kg = st.number_input(
                 "🏋️ Total Weight (kg)",
@@ -355,41 +325,50 @@ def page_user_dashboard():
             )
             small_count = st.number_input(
                 "🟢 Small Calamansi (count)",
-                min_value=0, max_value=1000, value=10,
-                help="Number of small-sized calamansi."
+                min_value=0, max_value=1000, value=10
             )
-
         with col2:
             medium_count = st.number_input(
                 "🟡 Medium Calamansi (count)",
-                min_value=0, max_value=1000, value=10,
-                help="Number of medium-sized calamansi."
+                min_value=0, max_value=1000, value=10
             )
             large_count = st.number_input(
                 "🔴 Large Calamansi (count)",
-                min_value=0, max_value=1000, value=10,
-                help="Number of large-sized calamansi."
+                min_value=0, max_value=1000, value=10
             )
 
-        ripeness = st.select_slider(
-            "🌿 Ripeness",
-            options=[1, 2, 3],
-            value=2,
-            format_func=lambda x: {
-                1: "1 – Unripe (dark green skin)",
-                2: "2 – Ripe (light green / yellowish)",
-                3: "3 – Overripe (yellow / soft skin)"
-            }[x]
+        st.markdown("---")
+        st.markdown("#### 🤖 Choose Algorithm")
+        algorithm = st.radio(
+            "Algorithm",
+            list(MODEL_PATHS.keys()),
+            label_visibility="collapsed",
+            help=(
+                "**Simple LR** uses only weight. "
+                "**Multiple LR** adds size as a second predictor. "
+                "**Polynomial** captures non-linear patterns between weight & size."
+            )
         )
 
+        algo_desc = {
+            "Simple Linear Regression":
+                "Uses **Weight only**. Good baseline — simplest possible model.",
+            "Multiple Linear Regression":
+                "Uses **Weight + Size**. Adds size as a second linear predictor.",
+            "Polynomial Regression (d=2)":
+                "Uses **Weight + Size + squared/interaction terms**. Can capture curves.",
+        }
+        st.info(algo_desc[algorithm])
         st.markdown("---")
 
         if st.button("🔮 Predict Yield", use_container_width=True, type="primary"):
-            weight_g     = weight_kg * 1000
-            total_count  = small_count + medium_count + large_count
+            weight_g    = weight_kg * 1000
+            total_count = small_count + medium_count + large_count
 
             if total_count == 0:
                 st.error("❌ Please enter at least one calamansi count.")
+            elif algorithm not in models:
+                st.error(f"❌ Model for '{algorithm}' not found.")
             else:
                 avg_size = (
                     (1 * small_count) + (2 * medium_count) + (3 * large_count)
@@ -401,15 +380,9 @@ def page_user_dashboard():
                     "Large"
                 )
 
-                import warnings
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    features     = np.array([[weight_g, avg_size, ripeness]])
-                    predicted_ml = float(model.predict(features)[0])
-                predicted_ml    = max(predicted_ml, 0)
+                predicted_ml    = predict_juice(models[algorithm], algorithm, weight_g, avg_size)
                 predicted_liters = predicted_ml / 1000
 
-                # ── Results ───────────────────────────────────
                 st.markdown("## 📊 Prediction Result")
                 r1, r2 = st.columns(2)
                 r1.metric("🧃 Juice (ml)",     f"{predicted_ml:.2f} ml")
@@ -417,19 +390,30 @@ def page_user_dashboard():
 
                 with st.expander("📌 Input Summary"):
                     st.write({
-                        "Total Weight (g)":  weight_g,
-                        "Total Calamansi":   total_count,
-                        "Avg Size":          f"{avg_size:.2f} ({size_label})",
-                        "Ripeness Score":    ripeness,
+                        "Total Weight (g)": weight_g,
+                        "Total Calamansi":  total_count,
+                        "Avg Size":         f"{avg_size:.2f} ({size_label})",
+                        "Algorithm Used":   algorithm,
                     })
 
-                # Save to DB
                 save_prediction(
                     username, weight_g,
                     small_count, medium_count, large_count,
-                    ripeness, predicted_ml
+                    algorithm, predicted_ml
                 )
                 st.success("✅ Prediction saved to your history!")
+
+                # Show all 3 results for comparison
+                st.markdown("---")
+                st.markdown("#### 🔁 Compare All 3 Algorithms")
+                comp_cols = st.columns(3)
+                for i, (algo_name, m) in enumerate(models.items()):
+                    pred = predict_juice(m, algo_name, weight_g, avg_size)
+                    comp_cols[i].metric(
+                        algo_name.replace(" (d=2)", ""),
+                        f"{pred:.2f} ml",
+                        delta=f"{pred - predicted_ml:+.2f} ml vs chosen" if algo_name != algorithm else "← selected"
+                    )
 
     # ── HISTORY ──────────────────────────────────────────────
     elif menu == "📋 My History":
@@ -446,14 +430,13 @@ def page_user_dashboard():
                 "small_count":     "Small",
                 "medium_count":    "Medium",
                 "large_count":     "Large",
-                "ripeness":        "Ripeness",
+                "algorithm":       "Algorithm",
                 "predicted_juice": "Juice (ml)",
                 "timestamp":       "Date & Time",
             })
             df["Juice (L)"] = (df["Juice (ml)"] / 1000).round(4)
             st.dataframe(df.drop(columns=["User"]), use_container_width=True)
 
-    # ── LOGOUT ───────────────────────────────────────────────
     elif menu == "🚪 Logout":
         for key in ["logged_in", "username", "role"]:
             st.session_state.pop(key, None)
@@ -478,27 +461,20 @@ def page_admin_dashboard():
     if menu == "👥 Manage Users":
         st.title("👥 Manage Users")
 
-        # ── Add new user / admin ──────────────────────────────
         with st.expander("➕ Add New User or Admin", expanded=False):
-            st.markdown("Create a new account with a specific role.")
             a1, a2 = st.columns(2)
             with a1:
                 new_uname = st.text_input("Username", key="add_uname")
                 new_upass = st.text_input("Password", type="password", key="add_upass")
             with a2:
-                new_role  = st.selectbox("Role", ["user", "admin"], key="add_role")
+                new_role = st.selectbox("Role", ["user", "admin"], key="add_role")
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("➕ Create Account", type="primary"):
                     ok, msg = register_user(new_uname, new_upass, role=new_role)
-                    if ok:
-                        st.success(f"✅ {msg}")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ {msg}")
+                    st.success(f"✅ {msg}") if ok else st.error(f"❌ {msg}")
+                    if ok: st.rerun()
 
         st.markdown("---")
-
-        # ── Users table ───────────────────────────────────────
         df = get_all_users()
         st.markdown(f"**{len(df)} user(s) registered.**")
 
@@ -506,20 +482,15 @@ def page_admin_dashboard():
             color = "#fff3cd" if row["role"] == "admin" else "#e8f5e9"
             return [f"background-color: {color}"] * len(row)
 
-        st.dataframe(
-            df.style.apply(highlight_role, axis=1),
-            use_container_width=True
-        )
+        st.dataframe(df.style.apply(highlight_role, axis=1), use_container_width=True)
         st.caption("🟡 Yellow = Admin  |  🟢 Green = Regular user")
 
-        # ── Change role ───────────────────────────────────────
         st.markdown("---")
         st.markdown("#### ✏️ Change User Role")
-        user_options = df[df["username"] != username]  # can't change own role
+        user_options = df[df["username"] != username]
         if not user_options.empty:
             selected_id   = st.selectbox(
-                "Select User",
-                user_options["id"].tolist(),
+                "Select User", user_options["id"].tolist(),
                 format_func=lambda i: df[df["id"] == i]["username"].values[0]
             )
             selected_role = st.selectbox("New Role", ["user", "admin"], key="new_role_sel")
@@ -528,14 +499,12 @@ def page_admin_dashboard():
                 st.success("✅ Role updated.")
                 st.rerun()
 
-        # ── Delete user ───────────────────────────────────────
         st.markdown("---")
         st.markdown("#### 🗑️ Delete User")
         del_options = df[df["username"] != username]
         if not del_options.empty:
             del_id = st.selectbox(
-                "Select User to Delete",
-                del_options["id"].tolist(),
+                "Select User to Delete", del_options["id"].tolist(),
                 format_func=lambda i: df[df["id"] == i]["username"].values[0],
                 key="del_user_sel"
             )
@@ -563,6 +532,14 @@ def page_admin_dashboard():
             m2.metric("Unique Users",       unique_users)
             m3.metric("Avg Juice (ml)",     f"{avg_juice:.2f}")
 
+            # Algorithm usage breakdown
+            if "algorithm" in df.columns:
+                st.markdown("---")
+                st.subheader("🤖 Predictions by Algorithm")
+                algo_counts = df["algorithm"].value_counts().reset_index()
+                algo_counts.columns = ["Algorithm", "Count"]
+                st.bar_chart(algo_counts.set_index("Algorithm"))
+
             st.markdown("---")
             st.subheader("All Records")
             df_display = df.rename(columns={
@@ -572,7 +549,7 @@ def page_admin_dashboard():
                 "small_count":     "Small",
                 "medium_count":    "Medium",
                 "large_count":     "Large",
-                "ripeness":        "Ripeness",
+                "algorithm":       "Algorithm",
                 "predicted_juice": "Juice (ml)",
                 "timestamp":       "Date & Time",
             })
@@ -582,114 +559,133 @@ def page_admin_dashboard():
     # ── MODEL RESULTS ─────────────────────────────────────────
     elif menu == "🤖 Model Results":
         st.title("🤖 Machine Learning Model Results")
-        st.markdown("Results from training the Multiple Linear Regression model on your real calamansi dataset.")
+        st.markdown("Comparison of **3 Linear Regression variants** trained on your real calamansi dataset.")
+        st.caption("ℹ️ Ripeness was removed — only objective physical features (Weight, Size) are used.")
         st.markdown("---")
 
-        mr = get_model_results()
-        if mr is None:
-            st.error("❌ Dataset or model not found. Please ensure `dataset.csv` and `model.pkl` exist.")
+        m = load_metrics()
+        if m is None:
+            st.error("❌ Metrics file not found. Please run `python train_model.py` first.")
             return
 
         # ── Dataset summary ───────────────────────────────────
         st.subheader("📂 Dataset Summary")
         d1, d2, d3 = st.columns(3)
-        d1.metric("Total Samples",    mr["dataset_rows"])
-        d2.metric("Training Samples", mr["training_samples"])
-        d3.metric("Test Samples",     mr["test_samples"])
+        d1.metric("Total Samples",    m["dataset_rows"])
+        d2.metric("Training Samples", m["training_samples"])
+        d3.metric("Test Samples",     m["test_samples"])
+
+        st.markdown("---")
+
+        # ── Algorithm comparison table ─────────────────────────
+        st.subheader("📊 Algorithm Performance Comparison")
+        st.caption("All models trained on **Weight** and **Size** only (no Ripeness).")
+
+        metrics = m["metrics"]
+        comp_data = []
+        for algo, vals in metrics.items():
+            comp_data.append({
+                "Algorithm":    algo,
+                "Features Used": "Weight only" if "Simple" in algo else "Weight + Size",
+                "R² Score":     round(vals["r2"], 4),
+                "MAE (ml)":     round(vals["mae"], 4),
+                "Best?":        "✅ Best" if algo == m["best_model"] else ""
+            })
+        comp_df = pd.DataFrame(comp_data)
+        st.dataframe(comp_df, use_container_width=True, hide_index=True)
+
+        # R² bar chart
+        st.markdown("##### R² Score (higher = better)")
+        r2_df = pd.DataFrame({
+            "Algorithm": list(metrics.keys()),
+            "R²":        [v["r2"] for v in metrics.values()]
+        }).set_index("Algorithm")
+        st.bar_chart(r2_df)
+
+        # MAE bar chart
+        st.markdown("##### Mean Absolute Error — ml (lower = better)")
+        mae_df = pd.DataFrame({
+            "Algorithm": list(metrics.keys()),
+            "MAE":       [v["mae"] for v in metrics.values()]
+        }).set_index("Algorithm")
+        st.bar_chart(mae_df)
 
         st.markdown("---")
 
         # ── Size distribution ─────────────────────────────────
         st.subheader("📏 Size Distribution")
         size_df = pd.DataFrame(
-            list(mr["size_dist"].items()),
+            list(m["size_dist"].items()),
             columns=["Size", "Count"]
         )
         st.bar_chart(size_df.set_index("Size"))
 
-        # ── Ripeness distribution ──────────────────────────────
-        st.subheader("🌿 Ripeness Distribution")
-        ripe_df = pd.DataFrame(
-            list(mr["ripeness_dist"].items()),
-            columns=["Ripeness Level", "Count"]
-        )
-        st.bar_chart(ripe_df.set_index("Ripeness Level"))
-        st.caption("Ripeness was manually recorded during the data collection experiment.")
-
         st.markdown("---")
 
-        # ── Model performance ─────────────────────────────────
-        st.subheader("📊 Model Performance")
-        p1, p2 = st.columns(2)
-        p1.metric(
-            "R² Score",
-            f"{mr['r2']:.4f}",
-            help="Closer to 1.0 = better. The higher the score, the more juice yield variation the model explains."
-        )
-        p2.metric(
-            "Mean Absolute Error",
-            f"{mr['mae']:.4f} ml",
-            help="Average difference between predicted and actual juice yield in ml."
-        )
-
-        st.progress(max(0.0, min(1.0, mr["r2"])), text=f"Model Accuracy: {mr['r2']*100:.1f}%")
-
-        st.markdown("---")
-
-        # ── Coefficients ──────────────────────────────────────
+        # ── Coefficients per model ─────────────────────────────
         st.subheader("📐 Learned Coefficients")
-        st.markdown("These tell us how much each feature affects the juice yield:")
 
-        coef_data = {
-            "Feature":     ["Weight (g)", "Size (1–3)", "Ripeness (1–3)", "Intercept"],
-            "Coefficient": [
-                mr["coef_weight"],
-                mr["coef_size"],
-                mr["coef_ripeness"],
-                mr["intercept"]
-            ],
-            "Meaning": [
-                f"Every 1g more weight → {mr['coef_weight']:+.4f} ml juice",
-                f"Each size step up (S→M→L) → {mr['coef_size']:+.4f} ml juice",
-                f"Each ripeness level up → {mr['coef_ripeness']:+.4f} ml juice",
-                "Base value when all inputs are zero"
-            ]
-        }
-        st.dataframe(pd.DataFrame(coef_data), use_container_width=True)
+        tab1, tab2, tab3 = st.tabs([
+            "Simple Linear Regression",
+            "Multiple Linear Regression",
+            "Polynomial Regression (d=2)"
+        ])
 
-        dominant = max(
-            [("Ripeness", mr["coef_ripeness"]),
-             ("Weight",   mr["coef_weight"]),
-             ("Size",     mr["coef_size"])],
-            key=lambda x: abs(x[1])
-        )
-        st.info(
-            f"**Key Insight:** **{dominant[0]}** has the strongest effect per unit "
-            f"({dominant[1]:+.4f} ml per level). This means it is the biggest driver "
-            f"of juice yield in the current model."
-        )
+        with tab1:
+            st.markdown("**Formula:** `Juice = Weight × coef + intercept`")
+            coef_df = pd.DataFrame([
+                {"Feature": "Weight (g)", "Coefficient": m["simple_coef_weight"],
+                 "Meaning": f"+{m['simple_coef_weight']:.4f} ml per gram"},
+                {"Feature": "Intercept",  "Coefficient": m["simple_intercept"],
+                 "Meaning": "Base value"},
+            ])
+            st.dataframe(coef_df, use_container_width=True, hide_index=True)
+            st.code(f"Juice = (Weight × {m['simple_coef_weight']}) + {m['simple_intercept']}")
 
-        st.markdown("---")
+        with tab2:
+            st.markdown("**Formula:** `Juice = Weight × w1 + Size × w2 + intercept`")
+            coef_df = pd.DataFrame([
+                {"Feature": "Weight (g)", "Coefficient": m["multiple_coef_weight"],
+                 "Meaning": f"+{m['multiple_coef_weight']:.4f} ml per gram"},
+                {"Feature": "Size (1–3)", "Coefficient": m["multiple_coef_size"],
+                 "Meaning": f"+{m['multiple_coef_size']:.4f} ml per size step"},
+                {"Feature": "Intercept",  "Coefficient": m["multiple_intercept"],
+                 "Meaning": "Base value"},
+            ])
+            st.dataframe(coef_df, use_container_width=True, hide_index=True)
+            st.code(
+                f"Juice = (Weight × {m['multiple_coef_weight']}) "
+                f"+ (Size × {m['multiple_coef_size']}) "
+                f"+ {m['multiple_intercept']}"
+            )
 
-        # ── Formula ───────────────────────────────────────────
-        st.subheader("🧮 Prediction Formula")
-        st.code(
-            f"""
-Predicted Juice (ml) =
-    (Weight × {mr['coef_weight']:.4f})
-  + (Size   × {mr['coef_size']:.4f})
-  + (Ripeness × {mr['coef_ripeness']:.4f})
-  + ({mr['intercept']:.4f})
-            """
-        )
+        with tab3:
+            st.markdown("**Features:** Weight, Size, Weight², Weight×Size, Size²")
+            poly_rows = []
+            for feat, coef in zip(m["poly_feat_names"], m["poly_coefs"]):
+                poly_rows.append({"Feature": feat, "Coefficient": coef})
+            poly_rows.append({"Feature": "Intercept", "Coefficient": m["poly_intercept"]})
+            st.dataframe(pd.DataFrame(poly_rows), use_container_width=True, hide_index=True)
 
         st.markdown("---")
-        st.caption(
-            f"Model: Multiple Linear Regression | Library: scikit-learn | "
-            f"Dataset: {mr['dataset_rows']} real calamansi samples"
-        )
 
-    # ── LOGOUT ───────────────────────────────────────────────
+        # ── Key insight ────────────────────────────────────────
+        best = m["best_model"]
+        best_r2 = metrics[best]["r2"]
+        st.info(f"""
+        **🏆 Best Performing Algorithm: {best}**
+
+        R² = {best_r2:.4f} — this model explains {best_r2*100:.1f}% of juice yield variation
+        using only **Weight** and **Size** as inputs (Ripeness removed).
+
+        All three algorithms are variants of Linear Regression, each adding more
+        complexity. The results show how adding more features or polynomial terms
+        affects prediction accuracy on this dataset.
+        """)
+
+        st.markdown("---")
+        st.caption("Model: scikit-learn LinearRegression / Pipeline(PolynomialFeatures) | Dataset: 295 real calamansi samples | Features: Weight (g), Size (1–3)")
+
     elif menu == "🚪 Logout":
         for key in ["logged_in", "username", "role"]:
             st.session_state.pop(key, None)
@@ -705,7 +701,6 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded"
     )
-
     create_tables()
 
     if not st.session_state.get("logged_in"):

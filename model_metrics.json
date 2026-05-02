@@ -1,0 +1,45 @@
+{
+  "metrics": {
+    "Simple Linear Regression": {
+      "mae": 0.4824891483413602,
+      "r2": 0.7780459132570811
+    },
+    "Multiple Linear Regression": {
+      "mae": 0.5108784123903487,
+      "r2": 0.751525218561978
+    },
+    "Polynomial Regression (d=2)": {
+      "mae": 0.5129146299482695,
+      "r2": 0.7472915251521556
+    }
+  },
+  "best_model": "Simple Linear Regression",
+  "simple_coef_weight": 0.3931,
+  "simple_intercept": -0.157,
+  "multiple_coef_weight": 0.2522,
+  "multiple_coef_size": 0.623,
+  "multiple_intercept": 0.2366,
+  "poly_feat_names": [
+    "Weight",
+    "Size",
+    "Weight^2",
+    "Weight Size",
+    "Size^2"
+  ],
+  "poly_coefs": [
+    0.292968,
+    0.936692,
+    -0.006609,
+    0.056079,
+    -0.246644
+  ],
+  "poly_intercept": -0.2068,
+  "dataset_rows": 295,
+  "training_samples": 236,
+  "test_samples": 59,
+  "size_dist": {
+    "Small": 137,
+    "Medium": 109,
+    "Large": 49
+  }
+}
