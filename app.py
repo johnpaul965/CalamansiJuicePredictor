@@ -589,7 +589,6 @@ def page_admin_dashboard():
     elif menu == "🤖 Model Results":
         st.title("🤖 Machine Learning Model Results")
         st.markdown("Comparison of **3 Linear Regression variants** trained on your real calamansi dataset.")
-        st.caption("ℹ️ Ripeness was removed — only objective physical features (Weight, Size) are used.")
         st.markdown("---")
 
         m = load_metrics()
