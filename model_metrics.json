@@ -1,24 +1,24 @@
 {
   "metrics": {
     "Simple Linear Regression": {
-      "mae": 0.6219246384497784,
-      "r2": 0.8435941482980537
+      "mae": 0.5793888422995196,
+      "r2": 0.8217924357352399
     },
     "Multiple Linear Regression": {
-      "mae": 0.6092679036548622,
-      "r2": 0.8431106852203701
+      "mae": 0.5724660525991297,
+      "r2": 0.8246500708551285
     },
     "Polynomial Regression (d=2)": {
-      "mae": 0.6137555404139448,
-      "r2": 0.839392130678265
+      "mae": 0.5497368305713467,
+      "r2": 0.83219947033319
     }
   },
-  "best_model": "Simple Linear Regression",
-  "simple_coef_weight": 0.4245,
-  "simple_intercept": -0.458,
-  "multiple_coef_weight": 0.346,
-  "multiple_coef_size": 0.3748,
-  "multiple_intercept": -0.277,
+  "best_model": "Polynomial Regression (d=2)",
+  "simple_coef_weight": 0.4378,
+  "simple_intercept": -0.5761,
+  "multiple_coef_weight": 0.3892,
+  "multiple_coef_size": 0.2381,
+  "multiple_intercept": -0.479,
   "poly_feat_names": [
     "Weight",
     "Size",
@@ -27,19 +27,19 @@
     "Size^2"
   ],
   "poly_coefs": [
-    0.619132,
-    -1.396084,
-    -0.053676,
-    0.503984,
-    -1.05395
+    0.181832,
+    0.268501,
+    -0.001828,
+    0.113378,
+    -0.321907
   ],
-  "poly_intercept": -0.1587,
-  "dataset_rows": 365,
-  "training_samples": 292,
-  "test_samples": 73,
+  "poly_intercept": 0.7089,
+  "dataset_rows": 540,
+  "training_samples": 432,
+  "test_samples": 108,
   "size_dist": {
-    "Small": 137,
-    "Medium": 109,
-    "Large": 119
+    "Small": 140,
+    "Medium": 233,
+    "Large": 167
   }
 }

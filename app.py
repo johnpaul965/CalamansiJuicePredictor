@@ -1,7 +1,3 @@
-"""
-app.py — Calamansi Juice Yield Predictor
-         Three algorithm comparison: Simple LR, Multiple LR, Polynomial Regression
-"""
 
 import streamlit as st
 import sqlite3
@@ -166,6 +162,19 @@ def get_all_users():
     conn.close()
     return df
 
+
+# ── NEW: Delete a single prediction (user can only delete their own) ──
+def delete_prediction(prediction_id, username):
+    conn = sqlite3.connect(DB_PATH)
+    c    = conn.cursor()
+    c.execute(
+        "DELETE FROM predictions WHERE id = ? AND username = ?",
+        (prediction_id, username)
+    )
+    conn.commit()
+    conn.close()
+
+
 # ═══════════════════════════════════════════════════════════════
 #  ML MODELS
 # ═══════════════════════════════════════════════════════════════
@@ -285,7 +294,7 @@ def page_user_dashboard():
         | Section       | Description                                              |
         |---------------|----------------------------------------------------------|
         | 🔮 Predict    | Enter calamansi details and get a juice yield estimate   |
-        | 📋 History    | Review all your past predictions                         |
+        | 📋 History    | Review and delete your past predictions                  |
 
         ### How Prediction Works
         The system compares **three regression algorithms** trained on **295 real calamansi samples**.
@@ -423,7 +432,27 @@ def page_user_dashboard():
             st.info("You have no predictions yet. Go to 🔮 Predict to get started!")
         else:
             st.markdown(f"**{len(df)} prediction(s) found.**")
-            df = df.rename(columns={
+
+            # ── DELETE SECTION ──────────────────────────────────
+            with st.expander("🗑️ Delete a Prediction", expanded=False):
+                st.caption("Select a prediction to delete from your history.")
+                del_id = st.selectbox(
+                    "Select Prediction to Delete",
+                    df["id"].tolist(),
+                    format_func=lambda i: (
+                        f"ID {i}  |  "
+                        f"{df[df['id']==i]['timestamp'].values[0]}  |  "
+                        f"{df[df['id']==i]['algorithm'].values[0]}  |  "
+                        f"{df[df['id']==i]['predicted_juice'].values[0]:.2f} ml"
+                    )
+                )
+                if st.button("🗑️ Delete Selected Prediction", type="primary"):
+                    delete_prediction(del_id, username)
+                    st.success(f"✅ Prediction ID {del_id} deleted.")
+                    st.rerun()
+            # ────────────────────────────────────────────────────
+
+            df_display = df.rename(columns={
                 "id":              "ID",
                 "username":        "User",
                 "weight_g":        "Weight (g)",
@@ -434,8 +463,8 @@ def page_user_dashboard():
                 "predicted_juice": "Juice (ml)",
                 "timestamp":       "Date & Time",
             })
-            df["Juice (L)"] = (df["Juice (ml)"] / 1000).round(4)
-            st.dataframe(df.drop(columns=["User"]), use_container_width=True)
+            df_display["Juice (L)"] = (df_display["Juice (ml)"] / 1000).round(4)
+            st.dataframe(df_display.drop(columns=["User"]), use_container_width=True)
 
     elif menu == "🚪 Logout":
         for key in ["logged_in", "username", "role"]:
