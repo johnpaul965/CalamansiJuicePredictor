@@ -297,7 +297,7 @@ def page_user_dashboard():
         | 📋 History    | Review and delete your past predictions                  |
 
         ### How Prediction Works
-        The system compares **three regression algorithms** trained on **295 real calamansi samples**.
+        The system compares **three regression algorithms** trained on **838 real calamansi samples**.
         You provide:
         - **Total weight** of your calamansi (in kg)
         - **Count** of small / medium / large calamansi
