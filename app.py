@@ -18,9 +18,6 @@ MODEL_PATHS = {
     "Multiple Linear Regression":  os.path.join(BASE_DIR, "model_multiple.pkl"),
     "Polynomial Regression (d=2)": os.path.join(BASE_DIR, "model_poly.pkl"),
 }
-WEIGHT_ONLY_MODEL_PATH = os.path.join(BASE_DIR, "model_weight_only.pkl")
-WEIGHT_ONLY_METRICS_PATH = os.path.join(BASE_DIR, "weight_only_metrics.json")
-WEIGHT_ONLY_MODEL_NAME = "Polynomial Regression (Weight only, d=2)"
 
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
@@ -190,26 +187,11 @@ def load_models():
     return models
 
 
-@st.cache_resource
-def load_weight_only_model():
-    if not os.path.exists(WEIGHT_ONLY_MODEL_PATH):
-        return None
-    return joblib.load(WEIGHT_ONLY_MODEL_PATH)
-
-
 @st.cache_data
 def load_metrics():
     if not os.path.exists(METRICS_PATH):
         return None
     with open(METRICS_PATH) as f:
-        return json.load(f)
-
-
-@st.cache_data
-def load_weight_only_metrics():
-    if not os.path.exists(WEIGHT_ONLY_METRICS_PATH):
-        return None
-    with open(WEIGHT_ONLY_METRICS_PATH) as f:
         return json.load(f)
 
 
@@ -315,17 +297,17 @@ def page_user_dashboard():
         | 📋 History    | Review and delete your past predictions         |
 
         ### How Prediction Works
-        The system uses the best-performing model retrained with **weight
-        only**. You provide the total weight of your calamansi batch in
-        kilograms or grams.
+        The system uses the existing **Simple Linear Regression** model,
+        which uses weight only. You provide the total weight of your
+        calamansi batch in kilograms or grams.
 
         The model predicts juice yield in **millilitres** and converts it to
         **litres**.
 
         ### Selected Model
-        The user prediction flow automatically uses **Polynomial Regression
-        (degree 2) with weight only**. Size classification and manual
-        algorithm selection are not required.
+        The user prediction flow automatically uses **Simple Linear
+        Regression**. Size classification and manual algorithm selection are
+        not required.
         """)
 
     # ── PREDICT ──────────────────────────────────────────────
@@ -334,13 +316,10 @@ def page_user_dashboard():
         st.markdown("Enter the total weight of your calamansi batch.")
         st.markdown("---")
 
-        model = load_weight_only_model()
-        metrics = load_weight_only_metrics()
-        if model is None or metrics is None:
-            st.error(
-                "❌ The selected weight-only model is not available. "
-                "Please run `python train_weight_only_model.py` first."
-            )
+        models = load_models()
+        model = models.get("Simple Linear Regression")
+        if model is None:
+            st.error("❌ The original model files are not available.")
             return
 
         weight_unit = st.radio(
@@ -371,8 +350,8 @@ def page_user_dashboard():
             weight_g = weight_value
 
         st.info(
-            f"Model selected automatically: **{WEIGHT_ONLY_MODEL_NAME}** "
-            f"({metrics['best_model']})."
+            "Model selected automatically: **Simple Linear Regression "
+            "(Weight only)**."
         )
         st.markdown("---")
 
@@ -392,7 +371,7 @@ def page_user_dashboard():
                         "Entered Weight": f"{weight_value:.2f} "
                         f"{'kg' if weight_unit.startswith('Kilograms') else 'g'}",
                         "Weight Used by Model": f"{weight_g:.2f} g",
-                        "Model Used": WEIGHT_ONLY_MODEL_NAME,
+                        "Model Used": "Simple Linear Regression",
                     }
                 )
 
@@ -404,7 +383,7 @@ def page_user_dashboard():
                 0,
                 0,
                 0,
-                WEIGHT_ONLY_MODEL_NAME,
+                "Simple Linear Regression",
                 predicted_ml,
             )
             st.success("✅ Prediction saved to your history!")
