@@ -5,6 +5,7 @@ import hashlib
 import joblib
 import os
 import json
+import re
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -20,13 +21,42 @@ MODEL_PATHS = {
 }
 
 DEFAULT_ADMIN_USER = "admin"
-DEFAULT_ADMIN_PASS = "admin123"
+ADMIN_INITIAL_PASSWORD_ENV = "ADMIN_INITIAL_PASSWORD"
+LEGACY_DEFAULT_ADMIN_PASSWORD = "admin123"
 
 # ═══════════════════════════════════════════════════════════════
 #  SECURITY
 # ═══════════════════════════════════════════════════════════════
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
+
+
+def validate_password(password: str):
+    """Validate the password rules documented for the system."""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must include at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must include at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return False, "Password must include at least one number."
+    if not re.search(r"[!@#$%^&*]", password):
+        return False, "Password must include at least one special character (!@#$%^&*)."
+    return True, ""
+
+
+def get_initial_admin_password():
+    """Read and validate the one-time initial admin secret without exposing it."""
+    password = os.environ.get(ADMIN_INITIAL_PASSWORD_ENV, "")
+    if not password:
+        return None
+    valid, message = validate_password(password)
+    if not valid:
+        raise RuntimeError(
+            f"{ADMIN_INITIAL_PASSWORD_ENV} does not meet the password policy: {message}"
+        )
+    return password
 
 # ═══════════════════════════════════════════════════════════════
 #  DATABASE — TABLES
@@ -58,13 +88,33 @@ def create_tables():
         )
     """)
 
-    # Seed default admin
+    # Create the initial admin only from the secure workspace secret.
+    initial_admin_password = get_initial_admin_password()
     c.execute("SELECT id FROM users WHERE username = ?", (DEFAULT_ADMIN_USER,))
-    if c.fetchone() is None:
+    admin_row = c.fetchone()
+    if admin_row is None:
+        if initial_admin_password is None:
+            conn.close()
+            raise RuntimeError(
+                f"Set the {ADMIN_INITIAL_PASSWORD_ENV} secret before creating the initial admin account."
+            )
         c.execute(
             "INSERT INTO users (username, password, role) VALUES (?, ?, 'admin')",
-            (DEFAULT_ADMIN_USER, hash_password(DEFAULT_ADMIN_PASS))
+            (DEFAULT_ADMIN_USER, hash_password(initial_admin_password))
         )
+    elif initial_admin_password is not None:
+        # Migrate the old shared admin credential once, without overwriting
+        # an admin password that has already been changed.
+        c.execute(
+            "SELECT password FROM users WHERE username = ?",
+            (DEFAULT_ADMIN_USER,)
+        )
+        stored_password = c.fetchone()[0]
+        if stored_password == hash_password(LEGACY_DEFAULT_ADMIN_PASSWORD):
+            c.execute(
+                "UPDATE users SET password = ? WHERE username = ?",
+                (hash_password(initial_admin_password), DEFAULT_ADMIN_USER)
+            )
 
     conn.commit()
     conn.close()
@@ -75,8 +125,11 @@ def create_tables():
 def register_user(username, password, role="user"):
     if not username.strip() or not password.strip():
         return False, "Username and password cannot be empty."
-    if len(password) < 6:
-        return False, "Password must be at least 6 characters."
+    if role not in {"user", "admin"}:
+        return False, "Invalid account role."
+    password_valid, password_message = validate_password(password)
+    if not password_valid:
+        return False, password_message
     try:
         conn = sqlite3.connect(DB_PATH)
         c    = conn.cursor()
@@ -252,7 +305,11 @@ def page_auth():
         with tab_register:
             st.subheader("📝 Create a New User Account")
             new_user  = st.text_input("Choose a Username", key="reg_user")
-            new_pass  = st.text_input("Choose a Password (min. 6 chars)", type="password", key="reg_pass")
+            new_pass  = st.text_input(
+                "Choose a Password (8+ chars, upper/lowercase, number, special character)",
+                type="password",
+                key="reg_pass",
+            )
             conf_pass = st.text_input("Confirm Password", type="password", key="reg_conf")
             if st.button("Register", use_container_width=True, type="primary"):
                 if new_pass != conf_pass:
@@ -457,7 +514,11 @@ def page_admin_dashboard():
             a1, a2 = st.columns(2)
             with a1:
                 new_uname = st.text_input("Username", key="add_uname")
-                new_upass = st.text_input("Password", type="password", key="add_upass")
+                new_upass = st.text_input(
+                    "Password (8+ chars, upper/lowercase, number, special character)",
+                    type="password",
+                    key="add_upass",
+                )
             with a2:
                 new_role = st.selectbox("Role", ["user", "admin"], key="add_role")
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -675,7 +736,11 @@ def page_admin_dashboard():
         """)
 
         st.markdown("---")
-        st.caption("Model: scikit-learn LinearRegression / Pipeline(PolynomialFeatures) | Dataset: 295 real calamansi samples | Features: Weight (g), Size (1–3)")
+        st.caption(
+            "Model: scikit-learn LinearRegression / Pipeline(PolynomialFeatures) | "
+            f"Dataset: {m['dataset_rows']} real calamansi samples | "
+            "Features: Weight (g), Size (1–3)"
+        )
 
     elif menu == "🚪 Logout":
         for key in ["logged_in", "username", "role"]:
