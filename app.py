@@ -349,10 +349,6 @@ def page_user_dashboard():
             )
             weight_g = weight_value
 
-        st.info(
-            "Model selected automatically: **Simple Linear Regression "
-            "(Weight only)**."
-        )
         st.markdown("---")
 
         if st.button("🔮 Predict Yield", use_container_width=True, type="primary"):
