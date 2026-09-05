@@ -18,6 +18,9 @@ MODEL_PATHS = {
     "Multiple Linear Regression":  os.path.join(BASE_DIR, "model_multiple.pkl"),
     "Polynomial Regression (d=2)": os.path.join(BASE_DIR, "model_poly.pkl"),
 }
+WEIGHT_ONLY_MODEL_PATH = os.path.join(BASE_DIR, "model_weight_only.pkl")
+WEIGHT_ONLY_METRICS_PATH = os.path.join(BASE_DIR, "weight_only_metrics.json")
+WEIGHT_ONLY_MODEL_NAME = "Polynomial Regression (Weight only, d=2)"
 
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
@@ -187,11 +190,26 @@ def load_models():
     return models
 
 
+@st.cache_resource
+def load_weight_only_model():
+    if not os.path.exists(WEIGHT_ONLY_MODEL_PATH):
+        return None
+    return joblib.load(WEIGHT_ONLY_MODEL_PATH)
+
+
 @st.cache_data
 def load_metrics():
     if not os.path.exists(METRICS_PATH):
         return None
     with open(METRICS_PATH) as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_weight_only_metrics():
+    if not os.path.exists(WEIGHT_ONLY_METRICS_PATH):
+        return None
+    with open(WEIGHT_ONLY_METRICS_PATH) as f:
         return json.load(f)
 
 
@@ -291,138 +309,105 @@ def page_user_dashboard():
         st.markdown("""
         ### What can you do here?
 
-        | Section       | Description                                              |
-        |---------------|----------------------------------------------------------|
-        | 🔮 Predict    | Enter calamansi details and get a juice yield estimate   |
-        | 📋 History    | Review and delete your past predictions                  |
+        | Section       | Description                                      |
+        |---------------|--------------------------------------------------|
+        | 🔮 Predict    | Enter batch weight and estimate juice yield     |
+        | 📋 History    | Review and delete your past predictions         |
 
         ### How Prediction Works
-        The system compares **three regression algorithms** trained on **295 real calamansi samples**.
-        You provide:
-        - **Total weight** of your calamansi (in kg)
-        - **Count** of small / medium / large calamansi
-        - **Which algorithm** you want to use for prediction
+        The system uses the best-performing model retrained with **weight
+        only**. You provide the total weight of your calamansi batch in
+        kilograms or grams.
 
-        The model predicts juice yield in **millilitres** and converts it to **litres**.
+        The model predicts juice yield in **millilitres** and converts it to
+        **litres**.
 
-        ### The Three Algorithms
-
-        | Algorithm | Features Used | Description |
-        |-----------|---------------|-------------|
-        | Simple Linear Regression | Weight only | Baseline — one predictor |
-        | Multiple Linear Regression | Weight + Size | Two predictors, linear |
-        | Polynomial Regression (d=2) | Weight + Size + interactions | Captures curved relationships |
+        ### Selected Model
+        The user prediction flow automatically uses **Polynomial Regression
+        (degree 2) with weight only**. Size classification and manual
+        algorithm selection are not required.
         """)
 
     # ── PREDICT ──────────────────────────────────────────────
     elif menu == "🔮 Predict":
         st.title("🔮 Predict Calamansi Juice Yield")
-        st.markdown("Fill in the details about your calamansi below.")
+        st.markdown("Enter the total weight of your calamansi batch.")
         st.markdown("---")
 
-        models = load_models()
-        if not models:
-            st.error("❌ Models not found. Please run `python train_model.py` first.")
+        model = load_weight_only_model()
+        metrics = load_weight_only_metrics()
+        if model is None or metrics is None:
+            st.error(
+                "❌ The selected weight-only model is not available. "
+                "Please run `python train_weight_only_model.py` first."
+            )
             return
 
-        col1, col2 = st.columns(2)
-        with col1:
-            weight_kg = st.number_input(
-                "🏋️ Total Weight (kg)",
-                min_value=0.01, max_value=50.0, value=1.0, step=0.1,
-                help="Total weight of all your calamansi in kilograms."
-            )
-            small_count = st.number_input(
-                "🟢 Small Calamansi (count)",
-                min_value=0, max_value=1000, value=10
-            )
-        with col2:
-            medium_count = st.number_input(
-                "🟡 Medium Calamansi (count)",
-                min_value=0, max_value=1000, value=10
-            )
-            large_count = st.number_input(
-                "🔴 Large Calamansi (count)",
-                min_value=0, max_value=1000, value=10
-            )
-
-        st.markdown("---")
-        st.markdown("#### 🤖 Choose Algorithm")
-        algorithm = st.radio(
-            "Algorithm",
-            list(MODEL_PATHS.keys()),
-            label_visibility="collapsed",
-            help=(
-                "**Simple LR** uses only weight. "
-                "**Multiple LR** adds size as a second predictor. "
-                "**Polynomial** captures non-linear patterns between weight & size."
-            )
+        weight_unit = st.radio(
+            "Weight unit",
+            ["Kilograms (kg)", "Grams (g)"],
+            horizontal=True,
+            help="Choose the unit that matches the scale reading.",
         )
+        if weight_unit == "Kilograms (kg)":
+            weight_value = st.number_input(
+                "🏋️ Total Weight (kg)",
+                min_value=0.01,
+                max_value=50.0,
+                value=1.0,
+                step=0.1,
+                help="Total weight of all your calamansi in kilograms.",
+            )
+            weight_g = weight_value * 1000
+        else:
+            weight_value = st.number_input(
+                "🏋️ Total Weight (g)",
+                min_value=1.0,
+                max_value=50000.0,
+                value=1000.0,
+                step=10.0,
+                help="Total weight of all your calamansi in grams.",
+            )
+            weight_g = weight_value
 
-        algo_desc = {
-            "Simple Linear Regression":
-                "Uses **Weight only**. Good baseline — simplest possible model.",
-            "Multiple Linear Regression":
-                "Uses **Weight + Size**. Adds size as a second linear predictor.",
-            "Polynomial Regression (d=2)":
-                "Uses **Weight + Size + squared/interaction terms**. Can capture curves.",
-        }
-        st.info(algo_desc[algorithm])
+        st.info(
+            f"Model selected automatically: **{WEIGHT_ONLY_MODEL_NAME}** "
+            f"({metrics['best_model']})."
+        )
         st.markdown("---")
 
         if st.button("🔮 Predict Yield", use_container_width=True, type="primary"):
-            weight_g    = weight_kg * 1000
-            total_count = small_count + medium_count + large_count
+            model_input = pd.DataFrame([[weight_g]], columns=["Weight"])
+            predicted_ml = max(float(model.predict(model_input)[0]), 0)
+            predicted_liters = predicted_ml / 1000
 
-            if total_count == 0:
-                st.error("❌ Please enter at least one calamansi count.")
-            elif algorithm not in models:
-                st.error(f"❌ Model for '{algorithm}' not found.")
-            else:
-                avg_size = (
-                    (1 * small_count) + (2 * medium_count) + (3 * large_count)
-                ) / total_count
+            st.markdown("## 📊 Prediction Result")
+            r1, r2 = st.columns(2)
+            r1.metric("🧃 Juice (ml)", f"{predicted_ml:.2f} ml")
+            r2.metric("🍶 Juice (liters)", f"{predicted_liters:.4f} L")
 
-                size_label = (
-                    "Small"  if avg_size < 1.5 else
-                    "Medium" if avg_size < 2.5 else
-                    "Large"
+            with st.expander("📌 Input Summary"):
+                st.write(
+                    {
+                        "Entered Weight": f"{weight_value:.2f} "
+                        f"{'kg' if weight_unit.startswith('Kilograms') else 'g'}",
+                        "Weight Used by Model": f"{weight_g:.2f} g",
+                        "Model Used": WEIGHT_ONLY_MODEL_NAME,
+                    }
                 )
 
-                predicted_ml    = predict_juice(models[algorithm], algorithm, weight_g, avg_size)
-                predicted_liters = predicted_ml / 1000
-
-                st.markdown("## 📊 Prediction Result")
-                r1, r2 = st.columns(2)
-                r1.metric("🧃 Juice (ml)",     f"{predicted_ml:.2f} ml")
-                r2.metric("🍶 Juice (liters)", f"{predicted_liters:.4f} L")
-
-                with st.expander("📌 Input Summary"):
-                    st.write({
-                        "Total Weight (g)": weight_g,
-                        "Total Calamansi":  total_count,
-                        "Avg Size":         f"{avg_size:.2f} ({size_label})",
-                        "Algorithm Used":   algorithm,
-                    })
-
-                save_prediction(
-                    username, weight_g,
-                    small_count, medium_count, large_count,
-                    algorithm, predicted_ml
-                )
-                st.success("✅ Prediction saved to your history!")
-
-                # Show all 3 results for comparison
-                st.markdown("---")
-                st.markdown("#### 🔁 Compare All 3 Algorithms")
-                comp_cols = st.columns(3)
-                for i, (algo_name, m) in enumerate(models.items()):
-                    pred = predict_juice(m, algo_name, weight_g, avg_size)
-                    comp_cols[i].metric(
-                        algo_name.replace(" (d=2)", ""),
-                        f"{pred:.2f} ml",
-                        delta=f"{pred - predicted_ml:+.2f} ml vs chosen" if algo_name != algorithm else "← selected"
-                    )
+            # Keep the existing database schema intact. Zero counts identify
+            # the new weight-only records without changing old history rows.
+            save_prediction(
+                username,
+                weight_g,
+                0,
+                0,
+                0,
+                WEIGHT_ONLY_MODEL_NAME,
+                predicted_ml,
+            )
+            st.success("✅ Prediction saved to your history!")
 
     # ── HISTORY ──────────────────────────────────────────────
     elif menu == "📋 My History":
@@ -464,6 +449,9 @@ def page_user_dashboard():
                 "timestamp":       "Date & Time",
             })
             df_display["Juice (L)"] = (df_display["Juice (ml)"] / 1000).round(4)
+            size_columns = ["Small", "Medium", "Large"]
+            weight_only_rows = df_display[size_columns].sum(axis=1) == 0
+            df_display.loc[weight_only_rows, size_columns] = "Not provided"
             st.dataframe(df_display.drop(columns=["User"]), use_container_width=True)
 
     elif menu == "🚪 Logout":
