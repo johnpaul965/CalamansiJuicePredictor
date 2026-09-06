@@ -22,7 +22,7 @@ MODEL_PATHS = {
 
 DEFAULT_ADMIN_USER = "admin"
 ADMIN_INITIAL_PASSWORD_ENV = "ADMIN_INITIAL_PASSWORD"
-LEGACY_DEFAULT_ADMIN_PASSWORD = "admin123"
+LEGACY_DEFAULT_ADMIN_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
 
 # ═══════════════════════════════════════════════════════════════
 #  SECURITY
@@ -110,7 +110,7 @@ def create_tables():
             (DEFAULT_ADMIN_USER,)
         )
         stored_password = c.fetchone()[0]
-        if stored_password == hash_password(LEGACY_DEFAULT_ADMIN_PASSWORD):
+        if stored_password == LEGACY_DEFAULT_ADMIN_HASH:
             c.execute(
                 "UPDATE users SET password = ? WHERE username = ?",
                 (hash_password(initial_admin_password), DEFAULT_ADMIN_USER)
