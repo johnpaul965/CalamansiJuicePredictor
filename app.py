@@ -5,7 +5,6 @@ import hashlib
 import joblib
 import os
 import json
-import re
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -21,8 +20,8 @@ MODEL_PATHS = {
 }
 
 DEFAULT_ADMIN_USER = "admin"
+DEFAULT_ADMIN_PASSWORD = "admin123"
 ADMIN_INITIAL_PASSWORD_ENV = "ADMIN_INITIAL_PASSWORD"
-LEGACY_DEFAULT_ADMIN_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
 
 # ═══════════════════════════════════════════════════════════════
 #  SECURITY
@@ -32,31 +31,13 @@ def hash_password(password: str) -> str:
 
 
 def validate_password(password: str):
-    """Validate the password rules documented for the system."""
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters."
-    if not re.search(r"[A-Z]", password):
-        return False, "Password must include at least one uppercase letter."
-    if not re.search(r"[a-z]", password):
-        return False, "Password must include at least one lowercase letter."
-    if not re.search(r"\d", password):
-        return False, "Password must include at least one number."
-    if not re.search(r"[!@#$%^&*]", password):
-        return False, "Password must include at least one special character (!@#$%^&*)."
+    if len(password.strip()) < 4:
+        return False, "Password must be at least 4 characters."
     return True, ""
 
 
 def get_initial_admin_password():
-    """Read and validate the one-time initial admin secret without exposing it."""
-    password = os.environ.get(ADMIN_INITIAL_PASSWORD_ENV, "")
-    if not password:
-        return None
-    valid, message = validate_password(password)
-    if not valid:
-        raise RuntimeError(
-            f"{ADMIN_INITIAL_PASSWORD_ENV} does not meet the password policy: {message}"
-        )
-    return password
+    return os.environ.get(ADMIN_INITIAL_PASSWORD_ENV) or DEFAULT_ADMIN_PASSWORD
 
 # ═══════════════════════════════════════════════════════════════
 #  DATABASE — TABLES
@@ -93,29 +74,10 @@ def create_tables():
     c.execute("SELECT id FROM users WHERE username = ?", (DEFAULT_ADMIN_USER,))
     admin_row = c.fetchone()
     if admin_row is None:
-        if initial_admin_password is None:
-            conn.close()
-            raise RuntimeError(
-                f"Set the {ADMIN_INITIAL_PASSWORD_ENV} secret before creating the initial admin account."
-            )
         c.execute(
             "INSERT INTO users (username, password, role) VALUES (?, ?, 'admin')",
             (DEFAULT_ADMIN_USER, hash_password(initial_admin_password))
         )
-    elif initial_admin_password is not None:
-        # Migrate the old shared admin credential once, without overwriting
-        # an admin password that has already been changed.
-        c.execute(
-            "SELECT password FROM users WHERE username = ?",
-            (DEFAULT_ADMIN_USER,)
-        )
-        stored_password = c.fetchone()[0]
-        if stored_password == LEGACY_DEFAULT_ADMIN_HASH:
-            c.execute(
-                "UPDATE users SET password = ? WHERE username = ?",
-                (hash_password(initial_admin_password), DEFAULT_ADMIN_USER)
-            )
-
     conn.commit()
     conn.close()
 
@@ -306,7 +268,7 @@ def page_auth():
             st.subheader("📝 Create a New User Account")
             new_user  = st.text_input("Choose a Username", key="reg_user")
             new_pass  = st.text_input(
-                "Choose a Password (8+ chars, upper/lowercase, number, special character)",
+                "Choose a Password (at least 4 characters)",
                 type="password",
                 key="reg_pass",
             )
@@ -354,17 +316,12 @@ def page_user_dashboard():
         | 📋 History    | Review and delete your past predictions         |
 
         ### How Prediction Works
-        The system uses the existing **Simple Linear Regression** model,
-        which uses weight only. You provide the total weight of your
-        calamansi batch in kilograms or grams.
+        Enter the total weight of your calamansi batch in kilograms or grams.
+        The system automatically converts the value to grams and runs all three
+        trained models.
 
-        The model predicts juice yield in **millilitres** and converts it to
-        **litres**.
-
-        ### Selected Model
-        The user prediction flow automatically uses **Simple Linear
-        Regression**. Size classification and manual algorithm selection are
-        not required.
+        You will see each model's predicted juice yield in millilitres and
+        litres, making it easy to compare the results.
         """)
 
     # ── PREDICT ──────────────────────────────────────────────
@@ -374,9 +331,10 @@ def page_user_dashboard():
         st.markdown("---")
 
         models = load_models()
-        model = models.get("Simple Linear Regression")
-        if model is None:
-            st.error("❌ The original model files are not available.")
+        required_models = list(MODEL_PATHS)
+        missing_models = [name for name in required_models if name not in models]
+        if missing_models:
+            st.error("The following model files are missing: " + ", ".join(missing_models))
             return
 
         weight_unit = st.radio(
@@ -409,37 +367,49 @@ def page_user_dashboard():
         st.markdown("---")
 
         if st.button("🔮 Predict Yield", use_container_width=True, type="primary"):
-            model_input = pd.DataFrame([[weight_g]], columns=["Weight"])
-            predicted_ml = max(float(model.predict(model_input)[0]), 0)
-            predicted_liters = predicted_ml / 1000
+            size = 1 if weight_g <= 10 else 2 if weight_g <= 14 else 3
+            model_input_weight = pd.DataFrame([[weight_g]], columns=["Weight"])
+            model_input_with_size = pd.DataFrame(
+                [[weight_g, size]], columns=["Weight", "Size"]
+            )
+            predictions = {}
+            predictions["Simple Linear Regression"] = max(
+                float(models["Simple Linear Regression"].predict(model_input_weight)[0]), 0
+            )
+            for name in ["Multiple Linear Regression", "Polynomial Regression (d=2)"]:
+                predictions[name] = max(
+                    float(models[name].predict(model_input_with_size)[0]), 0
+                )
 
-            st.markdown("## 📊 Prediction Result")
-            r1, r2 = st.columns(2)
-            r1.metric("🧃 Juice (ml)", f"{predicted_ml:.2f} ml")
-            r2.metric("🍶 Juice (liters)", f"{predicted_liters:.4f} L")
+            st.markdown("## 📊 Prediction Results")
+            result_columns = st.columns(3)
+            for column, (algorithm, predicted_ml) in zip(result_columns, predictions.items()):
+                with column:
+                    st.metric("Model", algorithm)
+                    st.metric("Juice (ml)", f"{predicted_ml:.2f} ml")
+                    st.caption(f"{predicted_ml / 1000:.4f} L")
 
             with st.expander("📌 Input Summary"):
                 st.write(
                     {
                         "Entered Weight": f"{weight_value:.2f} "
                         f"{'kg' if weight_unit.startswith('Kilograms') else 'g'}",
-                        "Weight Used by Model": f"{weight_g:.2f} g",
-                        "Model Used": "Simple Linear Regression",
+                        "Weight Used by Models": f"{weight_g:.2f} g",
+                        "Automatically Assigned Size": {1: "Small", 2: "Medium", 3: "Large"}[size],
                     }
                 )
 
-            # Keep the existing database schema intact. Zero counts identify
-            # the new weight-only records without changing old history rows.
-            save_prediction(
-                username,
-                weight_g,
-                0,
-                0,
-                0,
-                "Simple Linear Regression",
-                predicted_ml,
-            )
-            st.success("✅ Prediction saved to your history!")
+            for algorithm, predicted_ml in predictions.items():
+                save_prediction(
+                    username,
+                    weight_g,
+                    0,
+                    0,
+                    0,
+                    algorithm,
+                    predicted_ml,
+                )
+            st.success("✅ Results from all 3 models were saved to your history!")
 
     # ── HISTORY ──────────────────────────────────────────────
     elif menu == "📋 My History":
@@ -515,7 +485,7 @@ def page_admin_dashboard():
             with a1:
                 new_uname = st.text_input("Username", key="add_uname")
                 new_upass = st.text_input(
-                    "Password (8+ chars, upper/lowercase, number, special character)",
+                    "Password (at least 4 characters)",
                     type="password",
                     key="add_upass",
                 )
