@@ -2,38 +2,14 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../services/history_service.dart';
 
-class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key, required this.user, required this.service});
-  final AppUser user;
-  final HistoryService service;
-
-  @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
-}
-
+class HistoryScreen extends StatefulWidget { const HistoryScreen({super.key, required this.user, required this.service}); final AppUser user; final HistoryService service; @override State<HistoryScreen> createState() => _HistoryScreenState(); }
 class _HistoryScreenState extends State<HistoryScreen> {
   late Future<List<Map<String, dynamic>>> records;
-
-  @override
-  void initState() {
-    super.initState();
-    records = widget.service.forUser(widget.user.id);
-  }
-
-  void reload() => setState(() => records = widget.service.forUser(widget.user.id));
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(future: records, builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-      if (snapshot.hasError) return Center(child: Text('Could not load history.'));
-      final rows = snapshot.data ?? [];
-      if (rows.isEmpty) return const Center(child: Text('No predictions yet.'));
-      return RefreshIndicator(onRefresh: () async => reload(), child: ListView.builder(padding: const EdgeInsets.all(16), itemCount: rows.length, itemBuilder: (context, index) {
-        final row = rows[index];
-        final juice = (row['predicted_juice'] as num).toDouble();
-        return Card(child: ListTile(title: Text(row['algorithm'] as String), subtitle: Text('${row['weight_g']} g  •  ${row['created_at']}'), trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [Text('${juice.toStringAsFixed(2)} ml', style: const TextStyle(fontWeight: FontWeight.bold)), Text('${(juice / 1000).toStringAsFixed(4)} L')]), onLongPress: () async { await widget.service.delete(row['id'] as String); reload(); }));
-      }));
-    });
-  }
+  @override void initState() { super.initState(); records = widget.service.forUser(widget.user.id); }
+  Future<void> reload() async { setState(() => records = widget.service.forUser(widget.user.id)); await records; }
+  Future<void> remove(String id) async { await widget.service.delete(id); if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Prediction removed.'))); await reload(); } }
+  @override Widget build(BuildContext context) => FutureBuilder<List<Map<String, dynamic>>>(future: records, builder: (context, snapshot) { if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError) return _error(); final rows = snapshot.data ?? []; if (rows.isEmpty) return _empty(); return RefreshIndicator(onRefresh: reload, child: ListView(padding: const EdgeInsets.fromLTRB(20, 22, 20, 30), children: [Text('Your activity', style: Theme.of(context).textTheme.headlineSmall), const SizedBox(height: 5), Text('${rows.length} saved model result${rows.length == 1 ? '' : 's'}', style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 20), ...rows.map(_card), const SizedBox(height: 8), Center(child: Text('Swipe left to delete', style: Theme.of(context).textTheme.bodySmall))])); });
+  Widget _card(Map<String, dynamic> row) { final juice = (row['predicted_juice'] as num).toDouble(); return Dismissible(key: ValueKey(row['id']), direction: DismissDirection.endToStart, onDismissed: (_) => remove(row['id'] as String), background: Container(margin: const EdgeInsets.only(bottom: 10), alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), decoration: BoxDecoration(color: const Color(0xffd14343), borderRadius: BorderRadius.circular(18)), child: const Icon(Icons.delete_outline, color: Colors.white)), child: Card(margin: const EdgeInsets.only(bottom: 10), child: ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6), leading: const CircleAvatar(backgroundColor: Color(0xffe6f5ee), child: Icon(Icons.local_drink_outlined, color: Color(0xff0b7c5c))), title: Text(row['algorithm'] as String, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text('${row['weight_g']} g • ${row['created_at']}'), trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [Text('${juice.toStringAsFixed(2)} ml', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xff0b7c5c))), Text('${(juice / 1000).toStringAsFixed(4)} L', style: Theme.of(context).textTheme.bodySmall)]))); }
+  Widget _empty() => Center(child: Padding(padding: const EdgeInsets.all(30), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: .1), shape: BoxShape.circle), child: Icon(Icons.receipt_long_outlined, size: 46, color: Theme.of(context).colorScheme.primary)), const SizedBox(height: 18), Text('No predictions yet', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 8), const Text('Your yield estimates will appear here after your first calculation.', textAlign: TextAlign.center)]));
+  Widget _error() => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Text('Could not load your history.'), const SizedBox(height: 12), OutlinedButton(onPressed: reload, child: const Text('Try again'))]));
 }
