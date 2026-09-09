@@ -5,26 +5,89 @@ import '../services/history_service.dart';
 import '../services/prediction_service.dart';
 import 'history_screen.dart';
 
-class HomeScreen extends StatefulWidget { const HomeScreen({super.key, required this.user, required this.onSignOut}); final AppUser user; final Future<void> Function() onSignOut; @override State<HomeScreen> createState() => _HomeScreenState(); }
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key, required this.user, required this.onSignOut});
+  final AppUser user;
+  final Future<void> Function() onSignOut;
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
 class _HomeScreenState extends State<HomeScreen> {
-  int tab = 0; final weight = TextEditingController(text: '1'); String unit = 'kg'; bool busy = false; String? error; PredictionResponse? response; late final HistoryService history;
-  @override void initState() { super.initState(); history = HistoryService(Supabase.instance.client); }
-  @override void dispose() { weight.dispose(); super.dispose(); }
-  Future<void> predict() async {
-    final value = double.tryParse(weight.text.replaceAll(',', '.')); final max = unit == 'kg' ? 50 : 50000;
-    if (value == null || value <= 0 || value > max) { setState(() => error = 'Enter a weight between 0 and $max ${unit == 'kg' ? 'kg' : 'g'}.'); return; }
-    setState(() { busy = true; error = null; response = null; });
-    try { final result = await PredictionService().predict(weightG: unit == 'kg' ? value * 1000 : value, userId: widget.user.id, username: widget.user.username); if (mounted) setState(() => response = result); }
-    catch (e) { if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', '')); }
-    finally { if (mounted) setState(() => busy = false); }
+  int tab = 0;
+  final weight = TextEditingController(text: '1');
+  String unit = 'kg';
+  bool busy = false;
+  String? error;
+  PredictionResponse? response;
+  late final HistoryService history;
+
+  @override
+  void initState() {
+    super.initState();
+    history = HistoryService(Supabase.instance.client);
   }
-  @override Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Calamansi Yield'), actions: [PopupMenuButton<String>(icon: const Icon(Icons.account_circle_outlined), onSelected: (v) { if (v == 'logout') widget.onSignOut(); }, itemBuilder: (_) => [PopupMenuItem(enabled: false, child: Text(widget.user.username)), const PopupMenuDivider(), const PopupMenuItem(value: 'logout', child: Text('Sign out'))])]),
-    body: tab == 0 ? _predictBody() : HistoryScreen(user: widget.user, service: history),
-    bottomNavigationBar: NavigationBar(selectedIndex: tab, onDestinationSelected: (v) => setState(() => tab = v), destinations: const [NavigationDestination(icon: Icon(Icons.auto_graph_outlined), selectedIcon: Icon(Icons.auto_graph), label: 'Predict'), NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'History')]),
-  );
-  Widget _predictBody() { final theme = Theme.of(context); final colors = theme.colorScheme; return ListView(padding: const EdgeInsets.fromLTRB(20, 22, 20, 32), children: [Text('Good day, ${widget.user.username}', style: theme.textTheme.bodyMedium), const SizedBox(height: 4), Text('Estimate your yield', style: theme.textTheme.headlineMedium), const SizedBox(height: 8), const Text('Enter your total calamansi batch weight and compare three trained models.', style: TextStyle(height: 1.45)), const SizedBox(height: 24), Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [TextField(controller: weight, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: 'Total weight', suffixText: unit, suffixStyle: TextStyle(color: colors.primary, fontWeight: FontWeight.bold))), const SizedBox(height: 14), SizedBox(width: double.infinity, child: SegmentedButton<String>(segments: const [ButtonSegment(value: 'kg', label: Text('Kilograms (kg)')), ButtonSegment(value: 'g', label: Text('Grams (g)'))], selected: {unit}, onSelectionChanged: (v) => setState(() => unit = v.first)))]))), if (error != null) Padding(padding: const EdgeInsets.only(top: 14), child: Text(error!, style: TextStyle(color: colors.error))), const SizedBox(height: 22), FilledButton.icon(onPressed: busy ? null : predict, icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.bolt), label: Text(busy ? 'Running models...' : 'Calculate yield')), const SizedBox(height: 28), if (response == null) _tip() else _results(response!) ]); }
-  Widget _tip() => Card(color: const Color(0xffedf8f3), child: Padding(padding: const EdgeInsets.all(18), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.lightbulb_outline, color: Color(0xff0b7c5c)), const SizedBox(width: 12), const Expanded(child: Text('Your weight is converted to grams, processed by all three models, and saved to your history automatically.', style: TextStyle(color: Color(0xff477064), height: 1.45)))])));
-  Widget _results(PredictionResponse result) { final best = result.results.reduce((a, b) => a.juiceMl > b.juiceMl ? a : b); return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Prediction results', style: Theme.of(context).textTheme.titleLarge), Chip(label: Text(result.sizeLabel))]), const SizedBox(height: 10), ...result.results.map((r) => _result(r, r == best)), const SizedBox(height: 8), const Text('Saved to your history automatically.', style: TextStyle(color: Color(0xff477064), fontSize: 13))]); }
-  Widget _result(PredictionResult result, bool best) { final color = best ? Theme.of(context).colorScheme.primary : const Color(0xff71877c); return Card(margin: const EdgeInsets.only(bottom: 10), child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [Container(width: 44, height: 44, decoration: BoxDecoration(color: color.withValues(alpha: .11), borderRadius: BorderRadius.circular(13)), child: Icon(best ? Icons.star_rounded : Icons.analytics_outlined, color: color)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(result.algorithm, style: const TextStyle(fontWeight: FontWeight.w600)), Text('${result.juiceMl.toStringAsFixed(2)} ml', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700, color: color)), Text('${(result.juiceMl / 1000).toStringAsFixed(4)} liters', style: Theme.of(context).textTheme.bodySmall)])), if (best) const Text('TOP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xff0b7c5c)))])));
+
+  Future<void> runPrediction() async {
+    final value = double.tryParse(weight.text);
+    if (value == null || value <= 0) {
+      setState(() => error = 'Enter a weight greater than zero.');
+      return;
+    }
+    setState(() { busy = true; error = null; });
+    try {
+      final result = await PredictionService().predict(
+        weightG: unit == 'kg' ? value * 1000 : value,
+        userId: widget.user.id,
+        username: widget.user.username,
+      );
+      if (mounted) setState(() => response = result);
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Calamansi Yield'), actions: [IconButton(onPressed: widget.onSignOut, icon: const Icon(Icons.logout))]),
+      body: tab == 0 ? _predictionBody() : HistoryScreen(user: widget.user, service: history),
+      bottomNavigationBar: NavigationBar(selectedIndex: tab, onDestinationSelected: (value) => setState(() => tab = value), destinations: const [NavigationDestination(icon: Icon(Icons.calculate_outlined), selectedIcon: Icon(Icons.calculate), label: 'Predict'), NavigationDestination(icon: Icon(Icons.history), label: 'History')]),
+    );
+  }
+
+  Widget _predictionBody() {
+    final colors = Theme.of(context).colorScheme;
+    return ListView(padding: const EdgeInsets.fromLTRB(20, 18, 20, 30), children: [
+      Text('Estimate your yield', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 6),
+      const Text('Enter your total calamansi batch weight. All three models will run together.'),
+      const SizedBox(height: 24),
+      Row(children: [
+        Expanded(child: TextField(controller: weight, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Total weight'))),
+        const SizedBox(width: 12),
+        SegmentedButton<String>(segments: const [ButtonSegment(value: 'kg', label: Text('kg')), ButtonSegment(value: 'g', label: Text('g'))], selected: {unit}, onSelectionChanged: (value) => setState(() => unit = value.first)),
+      ]),
+      const SizedBox(height: 16),
+      FilledButton.icon(onPressed: busy ? null : runPrediction, icon: const Icon(Icons.auto_graph), label: Padding(padding: const EdgeInsets.all(13), child: Text(busy ? 'Running models...' : 'Run all 3 models'))),
+      if (error != null) Padding(padding: const EdgeInsets.only(top: 14), child: Text(error!, style: TextStyle(color: colors.error))),
+      if (response != null) ...[
+        const SizedBox(height: 28),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Results', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)), Text(response!.sizeLabel, style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold))]),
+        const SizedBox(height: 12),
+        ...response!.results.map((result) => _resultCard(result)),
+      ],
+    ]);
+  }
+
+  Widget _resultCard(PredictionResult result) {
+    return Card(margin: const EdgeInsets.only(bottom: 12), child: Padding(padding: const EdgeInsets.all(18), child: Row(children: [
+      CircleAvatar(backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: Icon(Icons.local_drink, color: Theme.of(context).colorScheme.primary)),
+      const SizedBox(width: 14),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(result.algorithm, style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 6), Text('${result.juiceMl.toStringAsFixed(2)} ml', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)), Text('${(result.juiceMl / 1000).toStringAsFixed(4)} L', style: const TextStyle(color: Colors.black54))])),
+    ])));
+  }
 }

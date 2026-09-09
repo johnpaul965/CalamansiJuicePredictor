@@ -1,20 +1,169 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models.dart';
-import '../model_metrics.dart';
 import '../services/history_service.dart';
 
-class AdminScreen extends StatefulWidget { const AdminScreen({super.key, required this.user, required this.onSignOut}); final AppUser user; final Future<void> Function() onSignOut; @override State<AdminScreen> createState() => _AdminScreenState(); }
+class AdminScreen extends StatefulWidget {
+  const AdminScreen({super.key, required this.user, required this.onSignOut});
+  final AppUser user;
+  final Future<void> Function() onSignOut;
+
+  @override
+  State<AdminScreen> createState() => _AdminScreenState();
+}
+
 class _AdminScreenState extends State<AdminScreen> {
-  int tab = 0; late final HistoryService service; late Future<List<Map<String, dynamic>>> records; late Future<List<Map<String, dynamic>>> users;
-  @override void initState() { super.initState(); service = HistoryService(Supabase.instance.client); records = service.all(); users = _loadUsers(); }
-  Future<List<Map<String, dynamic>>> _loadUsers() async { final rows = await Supabase.instance.client.from('app_users').select('id, username, role, created_at').order('created_at'); return List<Map<String, dynamic>>.from(rows); }
-  void reload() => setState(() { records = service.all(); users = _loadUsers(); });
-  Future<void> _role(String id, String role) async { await Supabase.instance.client.from('app_users').update({'role': role}).eq('id', id); reload(); }
-  Future<void> _delete(String id) async { await Supabase.instance.client.from('app_users').delete().eq('id', id); reload(); }
-  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(['User management', 'Prediction records', 'Model insights'][tab]), actions: [PopupMenuButton<String>(icon: const Icon(Icons.account_circle_outlined), onSelected: (v) { if (v == 'logout') widget.onSignOut(); }, itemBuilder: (_) => [PopupMenuItem(enabled: false, child: Text(widget.user.username)), const PopupMenuDivider(), const PopupMenuItem(value: 'logout', child: Text('Sign out'))])]), body: IndexedStack(index: tab, children: [_users(), _predictions(), _models()]), bottomNavigationBar: NavigationBar(selectedIndex: tab, onDestinationSelected: (v) => setState(() => tab = v), destinations: const [NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Users'), NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Records'), NavigationDestination(icon: Icon(Icons.insights_outlined), selectedIcon: Icon(Icons.insights), label: 'Models')]));
-  Widget _users() => FutureBuilder<List<Map<String, dynamic>>>(future: users, builder: (context, s) { if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (s.hasError) return _error(); final rows = s.data ?? []; return RefreshIndicator(onRefresh: () async { reload(); await users; }, child: ListView(padding: const EdgeInsets.all(20), children: [Text('${rows.length} accounts', style: Theme.of(context).textTheme.headlineSmall), const SizedBox(height: 16), ...rows.map((r) { final admin = r['role'] == 'admin'; final current = r['id'] == widget.user.id; return Card(margin: const EdgeInsets.only(bottom: 10), child: ListTile(leading: CircleAvatar(backgroundColor: admin ? const Color(0xfffff1c9) : const Color(0xffe6f5ee), child: Icon(admin ? Icons.shield_outlined : Icons.person_outline, color: admin ? const Color(0xffb77912) : const Color(0xff0b7c5c))), title: Text(r['username'] as String), subtitle: Text(admin ? 'Administrator' : 'Regular user'), trailing: current ? const Chip(label: Text('You')) : PopupMenuButton<String>(onSelected: (v) { if (v == 'role') _role(r['id'] as String, admin ? 'user' : 'admin'); if (v == 'delete') _delete(r['id'] as String); }, itemBuilder: (_) => [PopupMenuItem(value: 'role', child: Text(admin ? 'Make regular user' : 'Make administrator')), const PopupMenuItem(value: 'delete', child: Text('Delete account'))]))); })])); });
-  Widget _predictions() => FutureBuilder<List<Map<String, dynamic>>>(future: records, builder: (context, s) { if (s.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (s.hasError) return _error(); final rows = s.data ?? []; return RefreshIndicator(onRefresh: () async { reload(); await records; }, child: ListView(padding: const EdgeInsets.all(20), children: [Text('${rows.length} results saved', style: Theme.of(context).textTheme.headlineSmall), const SizedBox(height: 16), ...rows.map((r) { final juice = (r['predicted_juice'] as num).toDouble(); return Card(margin: const EdgeInsets.only(bottom: 10), child: ListTile(title: Text(r['algorithm'] as String), subtitle: Text('${r['username']} • ${r['weight_g']} g'), trailing: Text('${juice.toStringAsFixed(2)} ml', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xff0b7c5c)))); })])); });
-  Widget _models() { final entries = ModelMetrics.data.entries; return ListView(padding: const EdgeInsets.all(20), children: [Text('Model insights', style: Theme.of(context).textTheme.headlineSmall), const SizedBox(height: 5), Text('${ModelMetrics.samples} dataset samples • ${ModelMetrics.training} training • ${ModelMetrics.testing} test'), const SizedBox(height: 20), Card(color: const Color(0xffedf8f3), child: const ListTile(leading: Icon(Icons.emoji_events_outlined, color: Color(0xff0b7c5c)), title: Text('Best performing model'), subtitle: Text(ModelMetrics.best))), const SizedBox(height: 16), ...entries.map((e) { final r2 = e.value['r2']!; return Card(margin: const EdgeInsets.only(bottom: 10), child: Padding(padding: const EdgeInsets.all(15), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Expanded(child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600))), Text('R² ${r2.toStringAsFixed(4)}', style: const TextStyle(color: Color(0xff0b7c5c), fontWeight: FontWeight.bold))]), const SizedBox(height: 10), LinearProgressIndicator(value: r2, color: const Color(0xff0b7c5c), backgroundColor: const Color(0xffe5eee9))]))); })]; }
-  Widget _error() => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Text('Could not load data.'), const SizedBox(height: 12), OutlinedButton(onPressed: reload, child: const Text('Try again'))]));
+  int tab = 0;
+  late final HistoryService service;
+  late Future<List<Map<String, dynamic>>> records;
+  late Future<List<Map<String, dynamic>>> users;
+
+  @override
+  void initState() {
+    super.initState();
+    service = HistoryService(Supabase.instance.client);
+    records = service.all();
+    users = _loadUsers();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadUsers() async {
+    final rows = await Supabase.instance.client
+        .from('app_users')
+        .select('id, username, role, created_at')
+        .order('created_at', ascending: true);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  void reload() {
+    setState(() {
+      records = service.all();
+      users = _loadUsers();
+    });
+  }
+
+  Future<void> _deleteUser(String userId, String username) async {
+    await Supabase.instance.client.from('app_users').delete().eq('id', userId);
+    reload();
+  }
+
+  Future<void> _updateRole(String userId, String newRole) async {
+    await Supabase.instance.client
+        .from('app_users')
+        .update({'role': newRole}).eq('id', userId);
+    reload();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Admin Dashboard'),
+        actions: [
+          IconButton(onPressed: widget.onSignOut, icon: const Icon(Icons.logout)),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: tab,
+        onDestinationSelected: (value) => setState(() => tab = value),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Users'),
+          NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Predictions'),
+        ],
+      ),
+      body: tab == 0 ? _usersBody() : _predictionsBody(),
+    );
+  }
+
+  Widget _usersBody() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: users,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Could not load users.'));
+        }
+        final rows = snapshot.data ?? [];
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: rows.length,
+          itemBuilder: (context, index) {
+            final row = rows[index];
+            final isCurrentUser = row['id'] == widget.user.id;
+            return Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: row['role'] == 'admin'
+                      ? Colors.amber.shade100
+                      : Colors.green.shade100,
+                  child: Icon(
+                    row['role'] == 'admin' ? Icons.shield : Icons.person,
+                    color: row['role'] == 'admin' ? Colors.amber.shade800 : Colors.green.shade800,
+                  ),
+                ),
+                title: Text(row['username'] as String),
+                subtitle: Text(row['role'] as String),
+                trailing: isCurrentUser
+                    ? const Text('You', style: TextStyle(color: Colors.grey))
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.swap_horiz),
+                            tooltip: 'Toggle role',
+                            onPressed: () {
+                              final newRole = row['role'] == 'admin' ? 'user' : 'admin';
+                              _updateRole(row['id'] as String, newRole);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            tooltip: 'Delete user',
+                            onPressed: () => _deleteUser(row['id'] as String, row['username'] as String),
+                          ),
+                        ],
+                      ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _predictionsBody() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: records,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Could not load predictions.'));
+        }
+        final rows = snapshot.data ?? [];
+        return ListView(padding: const EdgeInsets.all(18), children: [
+          Text('All Predictions',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text('${rows.length} model results recorded'),
+          const SizedBox(height: 18),
+          ...rows.map((row) {
+            final juice = (row['predicted_juice'] as num).toDouble();
+            return Card(
+              child: ListTile(
+                title: Text(row['algorithm'] as String),
+                subtitle: Text('${row['username']}  -  ${row['weight_g']} g'),
+                trailing: Text('${juice.toStringAsFixed(2)} ml'),
+              ),
+            );
+          }),
+        ]);
+      },
+    );
+  }
 }
