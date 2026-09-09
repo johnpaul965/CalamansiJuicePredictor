@@ -2,3 +2,6 @@ project_id = "0ec90b57d6e95fcbda19832f"
 
 [functions.predict]
 verify_jwt = false
+
+[functions.retrain]
+verify_jwt = false

@@ -18,7 +18,8 @@ interface RequestBody {
   save: boolean;
 }
 
-const MODEL_COEFFICIENTS = {
+// Fallback coefficients (from the last Python training run)
+const FALLBACK_COEFFICIENTS = {
   simple: { weight: 0.4022, intercept: 0.0917 },
   multiple: { weight: 0.3058, size: 0.4745, intercept: 0.3224 },
   poly: {
@@ -33,29 +34,27 @@ function getSizeFromWeight(weightG: number): number {
   return 3;
 }
 
-function predictSimple(weightG: number): number {
-  const { weight, intercept } = MODEL_COEFFICIENTS.simple;
-  return Math.max(weight * weightG + intercept, 0);
+function predictSimple(weightG: number, coef: { weight: number; intercept: number }): number {
+  return Math.max(coef.weight * weightG + coef.intercept, 0);
 }
 
-function predictMultiple(weightG: number, size: number): number {
-  const { weight, size: sizeCoef, intercept } = MODEL_COEFFICIENTS.multiple;
-  return Math.max(weight * weightG + sizeCoef * size + intercept, 0);
+function predictMultiple(
+  weightG: number,
+  size: number,
+  coef: { weight: number; size: number; intercept: number }
+): number {
+  return Math.max(coef.weight * weightG + coef.size * size + coef.intercept, 0);
 }
 
-function predictPolynomial(weightG: number, size: number): number {
-  const coefs = MODEL_COEFFICIENTS.poly.coefs;
-  const intercept = MODEL_COEFFICIENTS.poly.intercept;
-  const features = [
-    weightG,
-    size,
-    weightG * weightG,
-    weightG * size,
-    size * size,
-  ];
-  let result = intercept;
+function predictPolynomial(
+  weightG: number,
+  size: number,
+  coef: { coefs: number[]; intercept: number }
+): number {
+  const features = [weightG, size, weightG * weightG, weightG * size, size * size];
+  let result = coef.intercept;
   for (let i = 0; i < features.length; i++) {
-    result += coefs[i] * features[i];
+    result += coef.coefs[i] * features[i];
   }
   return Math.max(result, 0);
 }
@@ -75,20 +74,42 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Load live model coefficients from model_state (if retrained)
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    let coeffs = FALLBACK_COEFFICIENTS;
+
+    const { data: state } = await supabase
+      .from("model_state")
+      .select("coefficients")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (state?.coefficients) {
+      coeffs = state.coefficients as typeof FALLBACK_COEFFICIENTS;
+    }
+
     const size = getSizeFromWeight(weight_g);
 
     const results: PredictionResult[] = [
-      { algorithm: "Simple Linear Regression", predicted_juice: predictSimple(weight_g) },
-      { algorithm: "Multiple Linear Regression", predicted_juice: predictMultiple(weight_g, size) },
-      { algorithm: "Polynomial Regression (d=2)", predicted_juice: predictPolynomial(weight_g, size) },
+      {
+        algorithm: "Simple Linear Regression",
+        predicted_juice: predictSimple(weight_g, coeffs.simple),
+      },
+      {
+        algorithm: "Multiple Linear Regression",
+        predicted_juice: predictMultiple(weight_g, size, coeffs.multiple),
+      },
+      {
+        algorithm: "Polynomial Regression (d=2)",
+        predicted_juice: predictPolynomial(weight_g, size, coeffs.poly),
+      },
     ];
 
     if (save && user_id && username) {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-
       for (const result of results) {
         await supabase.from("predictions").insert({
           user_id,

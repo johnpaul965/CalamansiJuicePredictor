@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models.dart';
 import '../services/history_service.dart';
+import 'model_results_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key, required this.user, required this.onSignOut});
@@ -68,9 +69,10 @@ class _AdminScreenState extends State<AdminScreen> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'Users'),
           NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Predictions'),
+          NavigationDestination(icon: Icon(Icons.science_outlined), selectedIcon: Icon(Icons.science), label: 'Models'),
         ],
       ),
-      body: tab == 0 ? _usersBody() : _predictionsBody(),
+      body: [() => _usersBody(), () => _predictionsBody(), () => const ModelResultsScreen()][tab](),
     );
   }
 
