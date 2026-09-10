@@ -177,7 +177,8 @@ Deno.serve(async (req: Request) => {
     const { data: rows, error: fetchError } = await supabase
       .from("dataset_rows")
       .select("weight, size, juice")
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .range(0, 49999);
 
     if (fetchError) throw new Error(fetchError.message);
     if (!rows || rows.length < 10) {

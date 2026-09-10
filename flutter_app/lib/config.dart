@@ -1,4 +1,4 @@
-const supabaseUrl = 'https://0ec90b57d6e95fcbda19832f.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib2x0IiwicmVmIjoiMGVjOTBiNTdkNmU5NWZjYmRhMTk4MzJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4ODE1NzQsImV4cCI6MTc1ODg4MTU3NH0.9I8-U0x86Ak8t2DGaIk0HfvTSLsAyzdnz-Nw00mMkKw';
+const supabaseUrl = 'https://ajsrgydvjavxxxqdtned.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqc3JneWR2amF2eHh4cWR0bmVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NzQwMjYsImV4cCI6MjEwNDU1MDAyNn0.zs_jE0ReBapyMu7Z6KWhoOMNW-ib5dGO5JO3OCmiJXc';
 const predictFunctionUrl = '$supabaseUrl/functions/v1/predict';
 const retrainFunctionUrl = '$supabaseUrl/functions/v1/retrain';

@@ -228,7 +228,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
               const SizedBox(height: 10),
               Text(
                 'R\u00b2 = ${(rawMetrics[best] as Map?)?['r2']} \u2014 this model explains '
-                '${(((rawMetrics[best] as Map?)?['r2'] as num?)?.toDouble() ?? 0) * 100).toStringAsFixed(1)}% of juice yield variation '
+                '${(((rawMetrics[best] as Map?)?['r2'] as num?)?.toDouble() ?? 0) * 100}.toStringAsFixed(1)}% of juice yield variation '
                 'using only Weight and Size as inputs.',
                 style: TextStyle(color: colors.onPrimaryContainer),
               ),

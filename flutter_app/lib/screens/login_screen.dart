@@ -20,24 +20,37 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> submit() async {
     setState(() { busy = true; error = null; });
-    if (registerMode) {
-      final message = await widget.auth.register(username.text, password.text);
-      if (message == null) {
-        setState(() { registerMode = false; busy = false; });
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account created. You can now log in.')));
+    try {
+      if (registerMode) {
+        final message = await widget.auth.register(username.text, password.text);
+        if (message == null) {
+          setState(() { registerMode = false; busy = false; });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Account created. You can now log in.')),
+            );
+          }
+          return;
+        }
+        setState(() { error = message; busy = false; });
         return;
       }
-      setState(() { error = message; busy = false; });
-      return;
+      final user = await widget.auth.login(username.text, password.text);
+      if (user == null) {
+        setState(() { error = 'Incorrect username or password.'; busy = false; });
+        return;
+      }
+      widget.onSignedIn(user);
+      if (mounted) setState(() => busy = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          error = 'Something went wrong: $e';
+          busy = false;
+        });
+      }
     }
-    final user = await widget.auth.login(username.text, password.text);
-    if (user == null) {
-      setState(() { error = 'Incorrect username or password.'; busy = false; });
-      return;
-    }
-    widget.onSignedIn(user);
   }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
