@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../main.dart';
 import '../models.dart';
 import '../services/auth_service.dart';
 
@@ -16,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final password = TextEditingController();
   bool registerMode = false;
   bool busy = false;
+  bool obscurePassword = true;
   String? error;
 
   Future<void> submit() async {
@@ -27,7 +30,12 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() { registerMode = false; busy = false; });
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Account created. You can now log in.')),
+              SnackBar(
+                content: const Text('Account created. You can now log in.'),
+                backgroundColor: CalamansiApp.primary,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
             );
           }
           return;
@@ -51,45 +59,158 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: CalamansiApp.bgLight,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(24)),
-                    child: const Icon(Icons.local_drink_rounded, color: Colors.white, size: 52),
+                  _buildLogo(),
+                  const SizedBox(height: 32),
+                  Text(
+                    registerMode ? 'Create Account' : 'Welcome Back',
+                    style: theme.textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
-                  Text('Calamansi Yield', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text(registerMode ? 'Create a simple account' : 'Predict juice yield from your batch weight.'),
-                  const SizedBox(height: 28),
-                  TextField(controller: username, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(Icons.person_outline))),
-                  const SizedBox(height: 16),
-                  TextField(controller: password, obscureText: true, onSubmitted: (_) => submit(), decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline))),
+                  Text(
+                    registerMode
+                        ? 'Sign up to start predicting calamansi juice yield'
+                        : 'Predict juice yield from your batch weight',
+                    style: theme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  _buildTextField(
+                    controller: username,
+                    label: 'Username',
+                    icon: Icons.person_outline_rounded,
+                    inputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildPasswordField(),
                   if (error != null) ...[
                     const SizedBox(height: 14),
-                    Text(error!, style: TextStyle(color: theme.colorScheme.error)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xffFDECEA),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: Color(0xffD8483E), size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(error!, style: const TextStyle(color: Color(0xffD8483E), fontSize: 13)),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 22),
-                  FilledButton(onPressed: busy ? null : submit, child: Padding(padding: const EdgeInsets.all(14), child: Text(busy ? 'Please wait...' : registerMode ? 'Create account' : 'Log in'))),
-                  const SizedBox(height: 10),
-                  TextButton(onPressed: busy ? null : () => setState(() { registerMode = !registerMode; error = null; }), child: Text(registerMode ? 'Already have an account? Log in' : 'Create a user account')),
-                  if (!registerMode) const Padding(padding: EdgeInsets.only(top: 18), child: Text('Admin demo account: admin / admin123', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54))),
+                  FilledButton(
+                    onPressed: busy ? null : submit,
+                    child: busy
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(registerMode ? 'Create account' : 'Log in'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: busy ? null : () => setState(() { registerMode = !registerMode; error = null; }),
+                    child: Text(registerMode ? 'Already have an account? Log in' : 'Create a user account'),
+                  ),
+                  if (!registerMode) ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xffFFF3D6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Admin demo: admin / admin123',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xff7A5800), fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogo() {
+    return Container(
+      width: 76,
+      height: 76,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [CalamansiApp.primary, CalamansiApp.primaryLight],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: CalamansiApp.primary.withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: const Icon(Icons.local_drink_rounded, color: Colors.white, size: 38),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputAction inputAction = TextInputAction.done,
+    bool obscure = false,
+    VoidCallback? onSubmitted,
+  }) {
+    return TextField(
+      controller: controller,
+      textInputAction: inputAction,
+      obscureText: obscure,
+      onSubmitted: (_) => onSubmitted?.call(),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: CalamansiApp.primary, size: 22),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextField(
+      controller: password,
+      obscureText: obscurePassword,
+      onSubmitted: (_) => submit(),
+      decoration: InputDecoration(
+        labelText: 'Password',
+        prefixIcon: Icon(Icons.lock_outline_rounded, color: CalamansiApp.primary, size: 22),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: CalamansiApp.textMuted,
+            size: 20,
+          ),
+          onPressed: () => setState(() => obscurePassword = !obscurePassword),
         ),
       ),
     );
