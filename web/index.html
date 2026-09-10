@@ -3,116 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#3F6B2E">
+  <meta name="theme-color" content="#167d65">
   <title>Calamansi Yield</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main id="app" class="shell">
-
-    <!-- ════ AUTH VIEW ════ -->
-    <section id="authView" class="ticket auth-ticket">
-      <div class="ticket-head">
-        <div class="calamansi-mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48" width="44" height="44">
-            <circle cx="24" cy="24" r="20" fill="#3F6B2E"/>
-            <ellipse cx="24" cy="24" rx="14" ry="16" fill="#C3D46B" opacity=".35"/>
-            <circle cx="24" cy="24" r="9" fill="#E2A339" opacity=".55"/>
-          </svg>
-        </div>
-        <div class="ticket-head-text">
-          <span class="eyebrow">CALAMANSI YIELD</span>
-          <h1 class="ticket-title">Weigh. Predict. Sell smart.</h1>
-        </div>
-      </div>
-      <div class="ticket-body">
-        <p class="muted">Enter a batch weight and get a trusted juice yield estimate in seconds.</p>
-        <form id="authForm" class="auth-form">
-          <label class="field-label">Username
-            <input id="username" required autocomplete="username" placeholder="e.g. juan_d">
-          </label>
-          <label class="field-label">Password
-            <input id="password" type="password" required autocomplete="current-password" placeholder="At least 4 characters">
-          </label>
-          <p id="authError" class="error-text"></p>
-          <button class="btn-primary" type="submit">Log in</button>
-        </form>
-        <button id="registerButton" class="btn-text">Create a user account</button>
-        <p class="demo-hint">Admin demo: admin / admin123</p>
-      </div>
+    <section id="authView" class="auth-card">
+      <div class="brand-mark">◉</div>
+      <p class="eyebrow">CALAMANSI YIELD</p>
+      <h1>Measure your harvest.</h1>
+      <p class="muted">Enter a batch weight and compare all three trained prediction models.</p>
+      <form id="authForm">
+        <label>Username<input id="username" required autocomplete="username"></label>
+        <label>Password<input id="password" type="password" required autocomplete="current-password"></label>
+        <p id="authError" class="error"></p>
+        <button class="primary" type="submit">Log in</button>
+      </form>
+      <button id="registerButton" class="link-button">Create a user account</button>
+      <p class="demo">Admin demo: admin / admin123</p>
     </section>
 
-    <!-- ════ MAIN VIEW ════ -->
     <section id="mainView" class="hidden">
-
-      <header class="topbar">
-        <div class="topbar-brand">
-          <div class="calamansi-mark-sm" aria-hidden="true">
-            <svg viewBox="0 0 48 48" width="30" height="30">
-              <circle cx="24" cy="24" r="20" fill="#3F6B2E"/>
-              <circle cx="24" cy="24" r="9" fill="#E2A339" opacity=".55"/>
-            </svg>
-          </div>
-          <span class="eyebrow">CALAMANSI YIELD</span>
-        </div>
-        <div class="topbar-right">
-          <button id="navPredict" class="nav-tab active-tab">Predict</button>
-          <button id="navHistory" class="nav-tab">History</button>
-          <button id="logoutButton" class="btn-ghost">Log out</button>
-        </div>
-      </header>
-
-      <!-- ════ PREDICT TAB ════ -->
-      <div id="predictTab" class="tab-panel">
-        <div class="ticket predict-ticket">
-          <div class="ticket-head">
-            <span class="eyebrow">WEIGHING TICKET</span>
-            <h2 class="ticket-title">Estimate your juice yield</h2>
-          </div>
-          <div class="ticket-body">
-            <label class="field-label">Batch weight in grams
-              <input id="weightInput" type="number" min="0.01" step="0.01" value="1000" placeholder="e.g. 1000">
-            </label>
-            <button id="predictButton" class="btn-primary btn-wide">Run all 3 models</button>
-            <p id="predictionError" class="error-text"></p>
-          </div>
-        </div>
-
-        <div id="results" class="hidden">
-          <div class="perforation" aria-hidden="true"></div>
-
-          <div class="results-ticket">
-            <div class="results-header">
-              <div>
-                <span class="eyebrow">PREDICTION RESULTS</span>
-                <h2 id="sizeLabel" class="ticket-title">—</h2>
-              </div>
-              <span id="weightLabel" class="weight-stamp">—</span>
-            </div>
-            <div id="heroResult" class="hero-result"></div>
-            <div id="otherResults" class="other-results"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ════ HISTORY TAB ════ -->
-      <div id="historyTab" class="tab-panel hidden">
-        <div class="ticket history-ticket">
-          <div class="ticket-head">
-            <span class="eyebrow">PREDICTION HISTORY</span>
-            <h2 class="ticket-title">Your past tickets</h2>
-          </div>
-          <div class="ticket-body">
-            <div id="historyList" class="history-list">
-              <p class="muted">Loading...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <header class="topbar"><div><p class="eyebrow">CALAMANSI YIELD</p><h2>Yield predictor</h2></div><button id="logoutButton" class="ghost">Log out</button></header>
+      <section class="hero-card"><div><p class="eyebrow light">TRAINED MODEL SUITE</p><h1>Estimate your juice yield.</h1><p>One input. Three trained models. A clear comparison.</p></div><div class="fruit-orb">✦</div></section>
+      <section class="panel">
+        <label class="input-label">Batch weight in grams<input id="weightInput" type="number" min="0.01" step="0.01" value="1000" placeholder="e.g. 1000"></label>
+        <button id="predictButton" class="primary wide">Run all 3 models</button>
+        <p id="predictionError" class="error"></p>
+      </section>
+      <section id="results" class="hidden"><div class="results-heading"><div><p class="eyebrow">PREDICTION RESULTS</p><h2 id="sizeLabel">—</h2></div><span id="weightLabel" class="pill">—</span></div><div id="resultCards" class="result-grid"></div></section>
     </section>
   </main>
   <script type="module" src="app.js"></script>
