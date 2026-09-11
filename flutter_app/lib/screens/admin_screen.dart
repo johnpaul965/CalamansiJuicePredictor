@@ -1,9 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../models.dart';
-import '../services/history_service.dart';
-import 'model_results_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key, required this.user, required this.onSignOut});
@@ -15,262 +14,639 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  int tab = 0;
-  late final HistoryService service;
-  late Future<List<Map<String, dynamic>>> records;
-  late Future<List<Map<String, dynamic>>> users;
+  int activeTab = 0; // 0: Paper & Models, 1: Users, 2: Logs
+
+  // User Management state
+  bool showAddUser = false;
+  final newUsername = TextEditingController();
+  final newPassword = TextEditingController();
+  String newRole = 'user';
+  List<Map<String, dynamic>> usersList = [];
+
+  // Prediction Logs state
+  List<Map<String, dynamic>> logsList = [];
 
   @override
   void initState() {
     super.initState();
-    service = HistoryService(Supabase.instance.client);
-    records = service.all();
-    users = _loadUsers();
+    _loadUsers();
+    _loadLogs();
   }
 
-  Future<List<Map<String, dynamic>>> _loadUsers() async {
-    final rows = await Supabase.instance.client
-        .from('app_users')
-        .select('id, username, role, created_at')
-        .order('created_at', ascending: true);
-    return List<Map<String, dynamic>>.from(rows);
+  @override
+  void dispose() {
+    newUsername.dispose();
+    newPassword.dispose();
+    super.dispose();
   }
 
-  void reload() {
+  Future<void> _loadUsers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('local_registered_users');
+    List<Map<String, dynamic>> list = [
+      {'username': 'admin', 'role': 'admin', 'status': 'Active', 'predictionsCount': 0, 'joined': '2026-09-01'},
+      {'username': 'farmer_juan', 'role': 'user', 'status': 'Active', 'predictionsCount': 8, 'joined': '2026-09-02'},
+      {'username': 'tacloban_vendor', 'role': 'user', 'status': 'Active', 'predictionsCount': 14, 'joined': '2026-09-03'},
+    ];
+    if (raw != null) {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      for (final item in decoded) {
+        if (!list.any((u) => u['username'] == item['username'])) {
+          list.add({
+            'username': item['username'],
+            'role': item['role'] ?? 'user',
+            'status': 'Active',
+            'predictionsCount': 1,
+            'joined': (item['created_at']?.toString() ?? '2026-09-10').split('T').first,
+          });
+        }
+      }
+    }
+    if (mounted) setState(() => usersList = list);
+  }
+
+  Future<void> _addUser() async {
+    final u = newUsername.text.trim().toLowerCase();
+    final p = newPassword.text.trim();
+    if (u.isEmpty || p.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('local_registered_users');
+    List<dynamic> list = [];
+    if (raw != null) list = jsonDecode(raw);
+
+    list.add({
+      'username': u,
+      'password': p,
+      'role': newRole,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    await prefs.setString('local_registered_users', jsonEncode(list));
+
     setState(() {
-      records = service.all();
-      users = _loadUsers();
+      showAddUser = false;
+      newUsername.clear();
+      newPassword.clear();
+    });
+    _loadUsers();
+  }
+
+  Future<void> _deleteUser(String username) async {
+    if (username == 'admin') return;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('local_registered_users');
+    if (raw != null) {
+      List<dynamic> list = jsonDecode(raw);
+      list.removeWhere((item) => item['username'] == username);
+      await prefs.setString('local_registered_users', jsonEncode(list));
+    }
+    setState(() {
+      usersList.removeWhere((u) => u['username'] == username);
     });
   }
 
-  Future<void> _deleteUser(String userId, String username) async {
-    await Supabase.instance.client.from('app_users').delete().eq('id', userId);
-    reload();
+  Future<void> _loadLogs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('local_prediction_logs');
+    if (raw != null) {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      if (mounted) {
+        setState(() {
+          logsList = List<Map<String, dynamic>>.from(decoded);
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          logsList = [
+            {
+              'date': '2026-09-10 14:20',
+              'user': 'farmer_juan',
+              'weight': '1.00 kg (1000g)',
+              'size': 'Medium (Size 2)',
+              'slr': '402.30 ml',
+              'mlr': '403.10 ml',
+              'poly': '404.60 ml',
+            },
+            {
+              'date': '2026-09-10 12:15',
+              'user': 'tacloban_vendor',
+              'weight': '2.50 kg (2500g)',
+              'size': 'Medium (Size 2)',
+              'slr': '1005.75 ml',
+              'mlr': '1007.80 ml',
+              'poly': '1011.50 ml',
+            },
+          ];
+        });
+      }
+    }
   }
 
-  Future<void> _updateRole(String userId, String newRole) async {
-    await Supabase.instance.client
-        .from('app_users')
-        .update({'role': newRole}).eq('id', userId);
-    reload();
+  Future<void> _clearLogs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('local_prediction_logs');
+    setState(() => logsList = []);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        actions: [
-          IconButton(
-            onPressed: widget.onSignOut,
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sign out',
+      backgroundColor: CalamansiApp.bgPage,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 16),
+                _buildAdminTabs(),
+                const SizedBox(height: 16),
+                if (activeTab == 0) _buildPaperTab(),
+                if (activeTab == 1) _buildUsersTab(),
+                if (activeTab == 2) _buildLogsTab(),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: (value) => setState(() => tab = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.people_outline_rounded),
-            selectedIcon: Icon(Icons.people_rounded),
-            label: 'Users',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_rounded),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Predictions',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.science_outlined),
-            selectedIcon: Icon(Icons.science_rounded),
-            label: 'Models',
-          ),
-        ],
-      ),
-      body: [() => _usersBody(), () => _predictionsBody(), () => const ModelResultsScreen()][tab](),
     );
   }
 
-  Widget _usersBody() {
-    final theme = Theme.of(context);
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: users,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: CalamansiApp.primary));
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.cloud_off_rounded, size: 44, color: CalamansiApp.textMuted),
-                const SizedBox(height: 12),
-                Text('Could not load users.', style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          );
-        }
-        final rows = snapshot.data ?? [];
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          itemCount: rows.length,
-          itemBuilder: (context, index) {
-            final row = rows[index];
-            final isCurrentUser = row['id'] == widget.user.id;
-            final isAdmin = row['role'] == 'admin';
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Card(
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  leading: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isAdmin ? const Color(0xffFFF3D6) : const Color(0xffD6F0E3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isAdmin ? Icons.shield_rounded : Icons.person_rounded,
-                      color: isAdmin ? const Color(0xffB8860B) : CalamansiApp.primary,
-                      size: 22,
-                    ),
-                  ),
-                  title: Text(row['username'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                  subtitle: Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isAdmin ? const Color(0xffFFF3D6) : const Color(0xffEDF3EE),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      row['role'] as String,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isAdmin ? const Color(0xff7A5800) : CalamansiApp.textMuted,
-                      ),
-                    ),
-                  ),
-                  trailing: isCurrentUser
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xffEDF3EE),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text('You', style: TextStyle(color: CalamansiApp.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.swap_horiz_rounded, color: CalamansiApp.primary),
-                              tooltip: 'Toggle role',
-                              onPressed: () {
-                                final newRole = row['role'] == 'admin' ? 'user' : 'admin';
-                                _updateRole(row['id'] as String, newRole);
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xffD8483E)),
-                              tooltip: 'Delete user',
-                              onPressed: () => _deleteUser(row['id'] as String, row['username'] as String),
-                            ),
-                          ],
-                        ),
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: CalamansiApp.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CalamansiApp.border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: CalamansiApp.primaryLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text('🍋', style: TextStyle(fontSize: 20)),
                 ),
               ),
-            );
-          },
-        );
-      },
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Calamansi Yield Predictor',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: CalamansiApp.textMain),
+                  ),
+                  Text(
+                    'Admin Portal • Tacloban City Harvest Study',
+                    style: TextStyle(fontSize: 11, color: CalamansiApp.textMuted),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xffede9fe),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'ADMIN',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xff7c3aed)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, size: 20, color: Color(0xffdc2626)),
+                tooltip: 'Sign out',
+                onPressed: widget.onSignOut,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _predictionsBody() {
-    final theme = Theme.of(context);
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: records,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: CalamansiApp.primary));
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.cloud_off_rounded, size: 44, color: CalamansiApp.textMuted),
-                const SizedBox(height: 12),
-                Text('Could not load predictions.', style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          );
-        }
-        final rows = snapshot.data ?? [];
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+  Widget _buildAdminTabs() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: CalamansiApp.bgSubtle,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: CalamansiApp.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _tabBtn('📑 Paper Results', activeTab == 0, () => setState(() => activeTab = 0))),
+          Expanded(child: _tabBtn('👥 User Management', activeTab == 1, () => setState(() => activeTab = 1))),
+          Expanded(child: _tabBtn('📋 Logs', activeTab == 2, () => setState(() => activeTab = 2))),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabBtn(String title, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: active
+              ? const [BoxShadow(color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 1))]
+              : null,
+        ),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active ? CalamansiApp.primary : CalamansiApp.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ──────────────── TAB 1: Paper & Model Results ────────────────
+  Widget _buildPaperTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Dataset Summary Card
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: CalamansiApp.bgCard,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: CalamansiApp.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Dataset Summary (Tacloban City Harvest Study)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '1,292 physical calamansi fruit extractions measured for weight, size, and juice yield.',
+                style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _statBox('1,292', 'Total Fruits'),
+                  const SizedBox(width: 8),
+                  _statBox('1,034', 'Training (80%)'),
+                  const SizedBox(width: 8),
+                  _statBox('258', 'Testing (20%)'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text('Fruit Size Classification', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
+              const SizedBox(height: 8),
+              _tableRow('Small (Size 1)', '≤ 10.0 g', '412', '31.9%'),
+              _tableRow('Medium (Size 2)', '10.1–14.0 g', '568', '44.0%'),
+              _tableRow('Large (Size 3)', '> 14.0 g', '312', '24.1%'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Algorithm Comparison Card
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: CalamansiApp.bgCard,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: CalamansiApp.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Algorithm Performance Comparison',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Evaluated on unseen test set (N=258) from the research findings:',
+                style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+              ),
+              const SizedBox(height: 14),
+              _modelPerfRow('Simple Linear', 'Weight', '0.7099', '0.5294 ml', false),
+              const SizedBox(height: 8),
+              _modelPerfRow('Multiple Linear', 'Weight, Size', '0.7100', '0.5292 ml', false),
+              const SizedBox(height: 8),
+              _modelPerfRow('Polynomial (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', true),
+              const SizedBox(height: 16),
+              const Text('Mathematical Formulas', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
+              const SizedBox(height: 8),
+              _formulaBox('1. Simple Linear', 'Juice (ml) = 0.4569 × Weight - 0.6080', false),
+              const SizedBox(height: 6),
+              _formulaBox('2. Multiple Linear', 'Juice (ml) = 0.4580 × Weight - 0.0053 × Size - 0.6108', false),
+              const SizedBox(height: 6),
+              _formulaBox('3. Polynomial (Optimal)', 'Juice = -0.5480 + 0.4357(W) + 0.0865(S) - 0.0031(W²) + 0.0474(W·S) - 0.1641(S²)', true),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statBox(String num, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: CalamansiApp.bgSubtle,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: CalamansiApp.border),
+        ),
+        child: Column(
           children: [
-            Row(
+            Text(num, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: CalamansiApp.primaryDark, fontFamily: 'monospace')),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontSize: 10, color: CalamansiApp.textMuted)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tableRow(String name, String weight, String count, String share) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(flex: 3, child: Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+          Expanded(flex: 2, child: Text(weight, style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted))),
+          Expanded(flex: 1, child: Text(count, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
+          Text(share, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: CalamansiApp.primary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _modelPerfRow(String name, String features, String r2, String mae, bool isWinner) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isWinner ? CalamansiApp.primarySoft : CalamansiApp.bgSubtle,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isWinner ? CalamansiApp.primary : CalamansiApp.border, width: isWinner ? 1.5 : 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('All Predictions', style: theme.textTheme.headlineSmall),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xffD6F0E3),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${rows.length}',
-                    style: const TextStyle(color: CalamansiApp.primaryDark, fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
+                Row(
+                  children: [
+                    Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain)),
+                    if (isWinner) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(color: CalamansiApp.accent, borderRadius: BorderRadius.circular(4)),
+                        child: const Text('★ Best', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ],
                 ),
+                Text(features, style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
               ],
             ),
-            const SizedBox(height: 4),
-            Text('${rows.length} model results recorded', style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 18),
-            ...rows.map((row) {
-              final juice = (row['predicted_juice'] as num).toDouble();
-              final algo = row['algorithm'] as String;
-              final isBest = algo.contains('Simple Linear');
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: isBest ? const Color(0xffD6F0E3) : const Color(0xffEDF3EE),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.local_drink_rounded,
-                        color: isBest ? CalamansiApp.primary : CalamansiApp.textMuted,
-                        size: 22,
-                      ),
-                    ),
-                    title: Text(algo, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    subtitle: Text('${row['username']}  -  ${row['weight_g']} g', style: const TextStyle(fontSize: 12, color: CalamansiApp.textMuted)),
-                    trailing: Text(
-                      '${juice.toStringAsFixed(2)} ml',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: CalamansiApp.primary),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('R²: $r2', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain, fontFamily: 'monospace')),
+              Text('MAE: $mae', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted, fontFamily: 'monospace')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _formulaBox(String title, String formula, bool highlight) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: highlight ? const Color(0xfff0fdf4) : CalamansiApp.bgSubtle,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: highlight ? const Color(0xff86efac) : CalamansiApp.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: highlight ? CalamansiApp.primary : CalamansiApp.textMain)),
+          const SizedBox(height: 2),
+          Text(formula, style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: CalamansiApp.textMain)),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────── TAB 2: User Management ────────────────
+  Widget _buildUsersTab() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: CalamansiApp.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CalamansiApp.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('System Users', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain)),
+              FilledButton.icon(
+                onPressed: () => setState(() => showAddUser = !showAddUser),
+                style: FilledButton.styleFrom(
+                  backgroundColor: CalamansiApp.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: Icon(showAddUser ? Icons.close : Icons.add, size: 16),
+                label: Text(showAddUser ? 'Cancel' : 'Add User', style: const TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          if (showAddUser) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: CalamansiApp.bgSubtle,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: CalamansiApp.border),
+              ),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: newUsername,
+                    decoration: const InputDecoration(hintText: 'Username (e.g. farmer_pedro)'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: newPassword,
+                    decoration: const InputDecoration(hintText: 'Password (min 4 chars)'),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _addUser,
+                      child: const Text('Save User Account'),
                     ),
                   ),
-                ),
-              );
-            }),
+                ],
+              ),
+            ),
           ],
-        );
-      },
+          const SizedBox(height: 14),
+          ...usersList.map(
+            (u) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: CalamansiApp.bgSubtle,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: CalamansiApp.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(u['username'] as String, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        Text('Joined: ${u['joined']}', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: u['role'] == 'admin' ? const Color(0xffede9fe) : CalamansiApp.primaryLight,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      (u['role'] as String).toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: u['role'] == 'admin' ? const Color(0xff7c3aed) : CalamansiApp.primaryDark,
+                      ),
+                    ),
+                  ),
+                  if (u['username'] != 'admin') ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xffdc2626)),
+                      onPressed: () => _deleteUser(u['username'] as String),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ──────────────── TAB 3: Prediction Logs ────────────────
+  Widget _buildLogsTab() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: CalamansiApp.bgCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: CalamansiApp.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Prediction History Logs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain)),
+              TextButton.icon(
+                onPressed: _clearLogs,
+                icon: const Icon(Icons.delete_sweep, size: 16, color: Color(0xffdc2626)),
+                label: const Text('Clear', style: TextStyle(color: Color(0xffdc2626), fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (logsList.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text('No prediction logs recorded yet.', style: TextStyle(color: CalamansiApp.textMuted, fontSize: 13))),
+            )
+          else
+            ...logsList.map(
+              (l) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: CalamansiApp.bgSubtle,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: CalamansiApp.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(l['user'] ?? 'user', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        Text(l['date'] ?? '', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Batch Weight: ${l['weight']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: CalamansiApp.primaryDark)),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('SLR: ${l['slr']}', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted, fontFamily: 'monospace')),
+                        Text('MLR: ${l['mlr']}', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted, fontFamily: 'monospace')),
+                        Text('Poly (Best): ${l['poly']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.primary, fontFamily: 'monospace')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

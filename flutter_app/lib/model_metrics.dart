@@ -1,21 +1,39 @@
 class ModelMetrics {
   static const data = {
-    'Simple Linear Regression': {'mae': 0.5120, 'r2': 0.8033},
-    'Multiple Linear Regression': {'mae': 0.5380, 'r2': 0.7900},
-    'Polynomial Regression (d=2)': {'mae': 0.5823, 'r2': 0.7547},
+    'Simple Linear Regression': {
+      'r2': 0.7099,
+      'mae': 0.5294,
+      'rmse': 0.6635,
+      'mse': 0.4403,
+      'mape': 10.42,
+    },
+    'Multiple Linear Regression': {
+      'r2': 0.7100,
+      'mae': 0.5292,
+      'rmse': 0.6635,
+      'mse': 0.4402,
+      'mape': 10.42,
+    },
+    'Polynomial Regression (d=2)': {
+      'r2': 0.7102,
+      'mae': 0.5279,
+      'rmse': 0.6637,
+      'mse': 0.4405,
+      'mape': 10.39,
+    },
   };
-  static const best = 'Simple Linear Regression';
+  static const best = 'Polynomial Regression (d=2)';
   static const samples = 1292;
-  static const training = 1033;
-  static const testing = 259;
-  static const distribution = {'Small': 265, 'Medium': 694, 'Large': 333};
+  static const training = 1034;
+  static const testing = 258;
+  static const distribution = {'Small': 262, 'Medium': 694, 'Large': 336};
 
-  static const simpleCoefWeight = 0.4022;
-  static const simpleIntercept = 0.0917;
+  static const simpleCoefWeight = 0.4569;
+  static const simpleIntercept = -0.6080;
 
-  static const multipleCoefWeight = 0.3058;
-  static const multipleCoefSize = 0.4745;
-  static const multipleIntercept = 0.3224;
+  static const multipleCoefWeight = 0.4580;
+  static const multipleCoefSize = -0.0053;
+  static const multipleIntercept = -0.6108;
 
   static const polyFeatNames = [
     'Weight',
@@ -24,6 +42,6 @@ class ModelMetrics {
     'Weight Size',
     'Size^2',
   ];
-  static const polyCoefs = [-1.381236, 7.428875, 0.183833, -1.416874, 2.611992];
-  static const polyIntercept = 3.5026;
+  static const polyCoefs = [0.435680, 0.086517, -0.003075, 0.047385, -0.164087];
+  static const polyIntercept = -0.5480;
 }

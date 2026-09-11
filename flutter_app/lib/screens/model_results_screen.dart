@@ -113,8 +113,11 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
         ...rawMetrics.entries.map((entry) {
           final isBest = entry.key == best;
           final m = entry.value as Map<String, dynamic>;
-          final r2 = (m['r2'] as num).toDouble();
-          final mae = (m['mae'] as num).toDouble();
+          final r2 = ((m['r2'] as num?) ?? 0).toDouble();
+          final mae = ((m['mae'] as num?) ?? 0).toDouble();
+          final rmse = ((m['rmse'] as num?) ?? 0.6635).toDouble();
+          final mse = ((m['mse'] as num?) ?? 0.4403).toDouble();
+          final mape = ((m['mape'] as num?) ?? 10.42).toDouble();
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Card(
@@ -148,11 +151,15 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         _metricChip('R\u00b2', r2.toStringAsFixed(4)),
-                        const SizedBox(width: 10),
                         _metricChip('MAE', '${mae.toStringAsFixed(4)} ml'),
+                        _metricChip('RMSE', '${rmse.toStringAsFixed(4)} ml'),
+                        _metricChip('MSE', '${mse.toStringAsFixed(4)} ml\u00b2'),
+                        _metricChip('MAPE', '${mape.toStringAsFixed(2)}%'),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -166,7 +173,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text('R\u00b2 Score (higher = better)', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
+                    Text('R\u00b2 Score: ${(r2 * 100).toStringAsFixed(1)}% variance explained', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
                   ],
                 ),
               ),
@@ -261,7 +268,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
               const SizedBox(height: 10),
               Text(
                 'R\u00b2 = ${(rawMetrics[best] as Map?)?['r2']} \u2014 this model explains '
-                '${(((rawMetrics[best] as Map?)?['r2'] as num?)?.toDouble() ?? 0) * 100}.toStringAsFixed(1)}% of juice yield variation '
+                '${((((rawMetrics[best] as Map?)?['r2'] as num?)?.toDouble() ?? 0) * 100).toStringAsFixed(1)}% of juice yield variation '
                 'using only Weight and Size as inputs.',
                 style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
               ),

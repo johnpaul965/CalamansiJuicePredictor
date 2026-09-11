@@ -25,24 +25,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: records,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: CalamansiApp.primary));
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.cloud_off_rounded, size: 44, color: CalamansiApp.textMuted),
-                const SizedBox(height: 12),
-                Text('Could not load history.', style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          );
         }
         final rows = snapshot.data ?? [];
         if (rows.isEmpty) {
@@ -51,18 +38,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 72,
-                  height: 72,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
-                    color: const Color(0xffEDF3EE),
-                    borderRadius: BorderRadius.circular(20),
+                    color: CalamansiApp.bgSubtle,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.history_rounded, size: 36, color: CalamansiApp.textMuted),
+                  child: const Center(
+                    child: Text('🍋', style: TextStyle(fontSize: 28)),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Text('No predictions yet', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 6),
-                Text('Run a prediction to see results here.', style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 14),
+                const Text(
+                  'No predictions yet',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: CalamansiApp.textMain),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Run a prediction to see your yield logs here.',
+                  style: TextStyle(fontSize: 13, color: CalamansiApp.textMuted),
+                ),
               ],
             ),
           );
@@ -71,46 +66,102 @@ class _HistoryScreenState extends State<HistoryScreen> {
           color: CalamansiApp.primary,
           onRefresh: () async => reload(),
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             itemCount: rows.length,
             itemBuilder: (context, index) {
               final row = rows[index];
-              final juice = (row['predicted_juice'] as num).toDouble();
-              final algo = row['algorithm'] as String;
-              final isBest = algo.contains('Simple Linear');
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: isBest ? const Color(0xffD6F0E3) : const Color(0xffEDF3EE),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.local_drink_rounded,
-                        color: isBest ? CalamansiApp.primary : CalamansiApp.textMuted,
-                        size: 22,
-                      ),
-                    ),
-                    title: Text(algo, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    subtitle: Text('${row['weight_g']} g  -  ${_formatDate(row['created_at'])}', style: const TextStyle(fontSize: 12, color: CalamansiApp.textMuted)),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('${juice.toStringAsFixed(2)} ml', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: CalamansiApp.primary)),
-                        Text('${(juice / 1000).toStringAsFixed(4)} L', style: const TextStyle(fontSize: 12, color: CalamansiApp.textMuted)),
-                      ],
-                    ),
-                    onLongPress: () async {
-                      await widget.service.delete(row['id'] as String);
-                      reload();
-                    },
+              final algo = row['algorithm']?.toString() ?? 'Polynomial Regression (d=2)';
+              final isBest = algo.contains('Polynomial');
+
+              double juice = 0.0;
+              if (row['predicted_juice'] is num) {
+                juice = (row['predicted_juice'] as num).toDouble();
+              } else if (row['poly'] != null) {
+                final match = RegExp(r'([\d\.]+)').firstMatch(row['poly'].toString());
+                if (match != null) juice = double.tryParse(match.group(1)!) ?? 0.0;
+              }
+
+              final weightStr = row['weight']?.toString() ?? '${row['weight_g']} g';
+              final dateStr = (row['date'] ?? row['created_at']?.toString().split('T').first) ?? '';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: CalamansiApp.bgCard,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isBest ? CalamansiApp.primary : CalamansiApp.border,
+                    width: isBest ? 1.5 : 1,
                   ),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  leading: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: isBest ? CalamansiApp.primaryLight : CalamansiApp.bgSubtle,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Text('🍋', style: TextStyle(fontSize: 20)),
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          algo,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: isBest ? CalamansiApp.primary : CalamansiApp.textMain,
+                          ),
+                        ),
+                      ),
+                      if (isBest)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: CalamansiApp.accent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            '★ Best',
+                            style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                    ],
+                  ),
+                  subtitle: Text(
+                    '$weightStr • $dateStr',
+                    style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted),
+                  ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${juice.toStringAsFixed(2)} ml',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: CalamansiApp.primary,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      Text(
+                        '${(juice / 1000).toStringAsFixed(4)} L',
+                        style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted, fontFamily: 'monospace'),
+                      ),
+                    ],
+                  ),
+                  onLongPress: () async {
+                    if (row['id'] != null) {
+                      await widget.service.delete(row['id'].toString());
+                      reload();
+                    }
+                  },
                 ),
               );
             },
@@ -118,11 +169,5 @@ class _HistoryScreenState extends State<HistoryScreen> {
         );
       },
     );
-  }
-
-  String _formatDate(String raw) {
-    if (raw.isEmpty) return '';
-    final parts = raw.split('T');
-    return parts.first;
   }
 }
