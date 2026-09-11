@@ -36,7 +36,6 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
 
     if (loading) {
       return const Center(child: CircularProgressIndicator(color: CalamansiApp.primary));
@@ -135,7 +134,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
-                              color: isBest ? CalamansiApp.primaryDark : CalamansiApp.textDark,
+                              color: isBest ? CalamansiApp.primaryDark : CalamansiApp.textMain,
                             ),
                           ),
                         ),
@@ -300,7 +299,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
   }
 
   Widget _sectionTitle(String text) {
-    return Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: CalamansiApp.textDark));
+    return Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: CalamansiApp.textMain));
   }
 
   Widget _statCard(String label, String value) {
@@ -330,7 +329,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
       child: Column(
         children: [
           Text(label, style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: CalamansiApp.textDark)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: CalamansiApp.textMain)),
         ],
       ),
     );
@@ -343,7 +342,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: CalamansiApp.textDark)),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: CalamansiApp.textMain)),
             const SizedBox(height: 10),
             Container(
               width: double.infinity,
@@ -352,7 +351,7 @@ class _ModelResultsScreenState extends State<ModelResultsScreen> {
                 color: const Color(0xffEDF3EE),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(formula, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: CalamansiApp.textDark, height: 1.5)),
+              child: Text(formula, style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: CalamansiApp.textMain, height: 1.5)),
             ),
             const SizedBox(height: 14),
             ...rows.map((row) => Padding(
