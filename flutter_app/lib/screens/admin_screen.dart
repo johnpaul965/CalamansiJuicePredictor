@@ -14,7 +14,7 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  int activeTab = 0; // 0: Paper & Models, 1: Users, 2: Logs
+  int activeTab = 0; // 0: Model Results, 1: Users, 2: Logs
 
   // User Management state
   bool showAddUser = false;
@@ -165,7 +165,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 const SizedBox(height: 16),
                 _buildAdminTabs(),
                 const SizedBox(height: 16),
-                if (activeTab == 0) _buildPaperTab(),
+                if (activeTab == 0) _buildModelResultsTab(),
                 if (activeTab == 1) _buildUsersTab(),
                 if (activeTab == 2) _buildLogsTab(),
               ],
@@ -252,7 +252,7 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
       child: Row(
         children: [
-          Expanded(child: _tabBtn('📑 Paper Results', activeTab == 0, () => setState(() => activeTab = 0))),
+          Expanded(child: _tabBtn('📊 Model Results', activeTab == 0, () => setState(() => activeTab = 0))),
           Expanded(child: _tabBtn('👥 User Management', activeTab == 1, () => setState(() => activeTab = 1))),
           Expanded(child: _tabBtn('📋 Logs', activeTab == 2, () => setState(() => activeTab = 2))),
         ],
@@ -285,8 +285,8 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  // ──────────────── TAB 1: Paper & Model Results ────────────────
-  Widget _buildPaperTab() {
+  // ──────────────── TAB 1: Model Results ────────────────
+  Widget _buildModelResultsTab() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -307,13 +307,13 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                '1,292 physical calamansi fruit extractions measured for weight, size, and juice yield.',
+                '1,292 physical calamansi extractions measured for weight, size, and juice yield.',
                 style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  _statBox('1,292', 'Total Fruits'),
+                  _statBox('1,292', 'Total Calamansi'),
                   const SizedBox(width: 8),
                   _statBox('1,034', 'Training (80%)'),
                   const SizedBox(width: 8),
@@ -321,7 +321,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text('Fruit Size Classification', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
+              const Text('Calamansi Size Classification', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
               const SizedBox(height: 8),
               _tableRow('Small (Size 1)', '≤ 10.0 g', '412', '31.9%'),
               _tableRow('Medium (Size 2)', '10.1–14.0 g', '568', '44.0%'),
@@ -348,7 +348,7 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Evaluated on unseen test set (N=258) from the research findings:',
+                'Evaluated on unseen test set (N=258):',
                 style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
               ),
               const SizedBox(height: 14),

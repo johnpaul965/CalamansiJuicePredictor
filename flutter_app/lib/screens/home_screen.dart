@@ -214,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Total Fruit Weight',
+                'Total Calamansi Weight',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: CalamansiApp.textMain),
               ),
               // Unit toggle buttons
@@ -367,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '🏷️ ${response!.sizeLabel} • ~${response!.estimatedFruitCount} fruits',
+                  '🏷️ ${response!.sizeLabel} • ~${response!.estimatedCalamansiCount} calamansi',
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.primaryDark),
                 ),
               ),
@@ -386,8 +386,8 @@ class _HomeScreenState extends State<HomeScreen> {
             juiceMl: slr.juiceMl,
             isBest: false,
             inputFeature: 'Weight only',
-            r2: '0.8135',
-            mae: '0.6800 ml',
+            r2: '0.7099',
+            mae: '0.5294 ml',
           ),
           const SizedBox(height: 12),
 
@@ -397,8 +397,8 @@ class _HomeScreenState extends State<HomeScreen> {
             juiceMl: mlr.juiceMl,
             isBest: false,
             inputFeature: 'Weight + Size',
-            r2: '0.8112',
-            mae: '0.6861 ml',
+            r2: '0.7100',
+            mae: '0.5292 ml',
           ),
           const SizedBox(height: 12),
 
@@ -408,8 +408,8 @@ class _HomeScreenState extends State<HomeScreen> {
             juiceMl: poly.juiceMl,
             isBest: true,
             inputFeature: 'Weight, Size, W², W·S, S²',
-            r2: '0.8197',
-            mae: '0.6692 ml',
+            r2: '0.7102',
+            mae: '0.5279 ml',
           ),
         ],
       ),

@@ -8,13 +8,13 @@ class PredictionResponse {
   const PredictionResponse({
     required this.results,
     required this.sizeLabel,
-    required this.estimatedFruitCount,
+    required this.estimatedCalamansiCount,
     required this.totalWeightG,
   });
 
   final List<PredictionResult> results;
   final String sizeLabel;
-  final int estimatedFruitCount;
+  final int estimatedCalamansiCount;
   final double totalWeightG;
 }
 
@@ -36,7 +36,7 @@ class PredictionService {
     -0.164087, // S^2
   ];
 
-  static int getFruitSizeCode(double weightG) {
+  static int getCalamansiSizeCode(double weightG) {
     if (weightG <= 10.0) return 1; // Small
     if (weightG <= 14.0) return 2; // Medium
     return 3; // Large
@@ -86,14 +86,14 @@ class PredictionService {
         final results = (body['results'] as List)
             .map((item) => PredictionResult.fromMap(item as Map<String, dynamic>))
             .toList();
-        final sizeLabel = body['size_label'] as String? ?? 'Medium Fruit (10–14g)';
+        final sizeLabel = body['size_label'] as String? ?? 'Medium Calamansi (10–14g)';
         final count = (weightG / 12.0).round();
         
         await _saveLocalLog(username, weightG, sizeLabel, results);
         return PredictionResponse(
           results: results,
           sizeLabel: sizeLabel,
-          estimatedFruitCount: count,
+          estimatedCalamansiCount: count,
           totalWeightG: weightG,
         );
       }
@@ -103,18 +103,18 @@ class PredictionService {
 
     // 2. High-precision local research calculation (identical to web/app.js)
     const representativeUnitWeight = 12.0; // Average weight for medium calamansi
-    final sizeCode = getFruitSizeCode(representativeUnitWeight);
+    final sizeCode = getCalamansiSizeCode(representativeUnitWeight);
     final count = (weightG / representativeUnitWeight).round();
-    final fruitCountDouble = weightG / representativeUnitWeight;
+    final calamansiCountDouble = weightG / representativeUnitWeight;
 
-    final slrFruitJuice = predictSimple(representativeUnitWeight);
-    final slrTotalMl = fruitCountDouble * slrFruitJuice;
+    final slrJuice = predictSimple(representativeUnitWeight);
+    final slrTotalMl = calamansiCountDouble * slrJuice;
 
-    final mlrFruitJuice = predictMultiple(representativeUnitWeight, sizeCode);
-    final mlrTotalMl = fruitCountDouble * mlrFruitJuice;
+    final mlrJuice = predictMultiple(representativeUnitWeight, sizeCode);
+    final mlrTotalMl = calamansiCountDouble * mlrJuice;
 
-    final polyFruitJuice = predictPoly(representativeUnitWeight, sizeCode);
-    final polyTotalMl = fruitCountDouble * polyFruitJuice;
+    final polyJuice = predictPoly(representativeUnitWeight, sizeCode);
+    final polyTotalMl = calamansiCountDouble * polyJuice;
 
     final results = [
       PredictionResult(algorithm: 'Simple Linear Regression', juiceMl: slrTotalMl),
@@ -122,13 +122,13 @@ class PredictionService {
       PredictionResult(algorithm: 'Polynomial Regression (d=2)', juiceMl: polyTotalMl),
     ];
 
-    const sizeLabel = 'Medium Fruit (10–14g)';
+    const sizeLabel = 'Medium Calamansi (10–14g)';
     await _saveLocalLog(username, weightG, sizeLabel, results);
 
     return PredictionResponse(
       results: results,
       sizeLabel: sizeLabel,
-      estimatedFruitCount: count,
+      estimatedCalamansiCount: count,
       totalWeightG: weightG,
     );
   }

@@ -32,6 +32,7 @@ class CalamansiApp extends StatelessWidget {
   static const border = Color(0xffe2e8f0); // --border
   static const borderFocus = Color(0xff16a34a); // --border-focus
   static const textMain = Color(0xff0f172a); // --text-main
+  static const textDark = Color(0xff0f172a); // --text-dark
   static const textMuted = Color(0xff64748b); // --text-muted
   static const textDim = Color(0xff94a3b8); // --text-dim
 
