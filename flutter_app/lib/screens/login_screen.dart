@@ -97,7 +97,11 @@ class _LoginScreenState extends State<LoginScreen> {
       widget.onSignedIn(user);
     } catch (e) {
       setState(() {
-        error = 'Authentication error. Please try again.';
+        if (e.toString().toLowerCase().contains('suspended')) {
+          error = 'This account has been suspended by an Administrator.';
+        } else {
+          error = 'Incorrect username or password. Please verify and try again.';
+        }
         busy = false;
       });
     }

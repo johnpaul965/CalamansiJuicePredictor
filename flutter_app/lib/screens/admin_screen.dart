@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
 import '../models.dart';
 
@@ -41,6 +43,47 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _loadUsers() async {
+    // 1. Try fetching from Supabase SQL table app_users
+    try {
+      final response = await Supabase.instance.client
+          .from('app_users')
+          .select('id, username, role, status, created_at')
+          .order('created_at', ascending: true);
+
+      // Fetch prediction count per user
+      final predictions = await Supabase.instance.client
+          .from('predictions')
+          .select('username');
+
+      final Map<String, int> counts = {};
+      if (predictions is List) {
+        for (final p in predictions) {
+          final u = p['username']?.toString() ?? '';
+          counts[u] = (counts[u] ?? 0) + 1;
+        }
+      }
+
+      if (response is List && response.isNotEmpty) {
+        final List<Map<String, dynamic>> dbList = [];
+        for (final item in response) {
+          final uname = item['username']?.toString() ?? '';
+          dbList.add({
+            'id': item['id']?.toString(),
+            'username': uname,
+            'role': item['role']?.toString() ?? 'user',
+            'status': item['status']?.toString() ?? 'Active',
+            'predictionsCount': counts[uname] ?? 0,
+            'joined': (item['created_at']?.toString() ?? '2026-09-10').split('T').first,
+          });
+        }
+        if (mounted) setState(() => usersList = dbList);
+        return;
+      }
+    } catch (_) {
+      // Offline or network unavailable -> gracefully fallback to local storage
+    }
+
+    // 2. Fallback to local storage
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('local_registered_users');
     List<Map<String, dynamic>> list = [
@@ -55,7 +98,7 @@ class _AdminScreenState extends State<AdminScreen> {
           list.add({
             'username': item['username'],
             'role': item['role'] ?? 'user',
-            'status': 'Active',
+            'status': item['status'] ?? 'Active',
             'predictionsCount': 1,
             'joined': (item['created_at']?.toString() ?? '2026-09-10').split('T').first,
           });
@@ -70,6 +113,21 @@ class _AdminScreenState extends State<AdminScreen> {
     final p = newPassword.text.trim();
     if (u.isEmpty || p.isEmpty) return;
 
+    final hashedPassword = sha256.convert(utf8.encode(p)).toString();
+
+    // 1. Insert into Supabase SQL database table app_users
+    try {
+      await Supabase.instance.client.from('app_users').insert({
+        'username': u,
+        'password': hashedPassword,
+        'role': newRole,
+        'status': 'Active',
+      });
+    } catch (_) {
+      // Fallback if offline
+    }
+
+    // 2. Also persist locally
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('local_registered_users');
     List<dynamic> list = [];
@@ -79,6 +137,7 @@ class _AdminScreenState extends State<AdminScreen> {
       'username': u,
       'password': p,
       'role': newRole,
+      'status': 'Active',
       'created_at': DateTime.now().toIso8601String(),
     });
     await prefs.setString('local_registered_users', jsonEncode(list));
@@ -91,8 +150,87 @@ class _AdminScreenState extends State<AdminScreen> {
     _loadUsers();
   }
 
+  Future<void> _toggleUserStatus(String username) async {
+    if (username == widget.user.username) return;
+
+    final target = usersList.firstWhere((u) => u['username'] == username, orElse: () => {});
+    final currentStatus = target['status']?.toString() ?? 'Active';
+    final newStatus = currentStatus == 'Suspended' ? 'Active' : 'Suspended';
+
+    // 1. Update in Supabase SQL database
+    try {
+      await Supabase.instance.client.from('app_users').update({
+        'status': newStatus,
+      }).eq('username', username);
+    } catch (_) {}
+
+    // 2. Update locally
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('local_registered_users');
+    List<dynamic> list = [];
+    if (raw != null) list = jsonDecode(raw);
+
+    for (var item in list) {
+      if (item['username'] == username) {
+        item['status'] = newStatus;
+      }
+    }
+    await prefs.setString('local_registered_users', jsonEncode(list));
+
+    setState(() {
+      for (var u in usersList) {
+        if (u['username'] == username) {
+          u['status'] = newStatus;
+        }
+      }
+    });
+  }
+
+  Future<void> _toggleUserRole(String username) async {
+    if (username == widget.user.username) return;
+
+    final target = usersList.firstWhere((u) => u['username'] == username, orElse: () => {});
+    final currentRole = target['role']?.toString() ?? 'user';
+    final newRole = currentRole == 'admin' ? 'user' : 'admin';
+
+    // 1. Update in Supabase SQL database
+    try {
+      await Supabase.instance.client.from('app_users').update({
+        'role': newRole,
+      }).eq('username', username);
+    } catch (_) {}
+
+    // 2. Update locally
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('local_registered_users');
+    List<dynamic> list = [];
+    if (raw != null) list = jsonDecode(raw);
+
+    for (var item in list) {
+      if (item['username'] == username) {
+        item['role'] = newRole;
+      }
+    }
+    await prefs.setString('local_registered_users', jsonEncode(list));
+
+    setState(() {
+      for (var u in usersList) {
+        if (u['username'] == username) {
+          u['role'] = newRole;
+        }
+      }
+    });
+  }
+
   Future<void> _deleteUser(String username) async {
-    if (username == 'admin') return;
+    if (username == 'admin' || username == widget.user.username) return;
+
+    // 1. Delete from Supabase SQL database
+    try {
+      await Supabase.instance.client.from('app_users').delete().eq('username', username);
+    } catch (_) {}
+
+    // 2. Delete locally
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('local_registered_users');
     if (raw != null) {
@@ -105,7 +243,115 @@ class _AdminScreenState extends State<AdminScreen> {
     });
   }
 
+  void _showResetPasswordDialog(String username) {
+    final resetPassCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text('Reset Password for $username', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Enter a new password with at least 4 characters.', style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: resetPassCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(hintText: 'New password'),
+            ),
+          ],
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: CalamansiApp.border)),
+            child: const Text('Cancel', style: TextStyle(color: CalamansiApp.textMuted)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: CalamansiApp.primary),
+            onPressed: () async {
+              final newPass = resetPassCtrl.text.trim();
+              if (newPass.length < 4) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password must be at least 4 characters long.')),
+                );
+                return;
+              }
+
+              // Update in Supabase SQL database
+              try {
+                final hashed = sha256.convert(utf8.encode(newPass)).toString();
+                await Supabase.instance.client.from('app_users').update({
+                  'password': hashed,
+                }).eq('username', username);
+              } catch (_) {}
+
+              // Update locally
+              final prefs = await SharedPreferences.getInstance();
+              final raw = prefs.getString('local_registered_users');
+              if (raw != null) {
+                List<dynamic> list = jsonDecode(raw);
+                for (var item in list) {
+                  if (item['username'] == username) {
+                    item['password'] = newPass;
+                  }
+                }
+                await prefs.setString('local_registered_users', jsonEncode(list));
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Password successfully updated for $username!'), backgroundColor: CalamansiApp.primary),
+                );
+              }
+            },
+            child: const Text('Update Password'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadLogs() async {
+    // 1. Try querying predictions directly from Supabase SQL table
+    try {
+      final rows = await Supabase.instance.client
+          .from('predictions')
+          .select()
+          .order('created_at', ascending: false)
+          .limit(100);
+
+      if (rows is List && rows.isNotEmpty) {
+        final List<Map<String, dynamic>> list = [];
+        for (final r in rows) {
+          final weight = (r['weight_g'] as num?)?.toDouble() ?? 0.0;
+          final juice = (r['predicted_juice'] as num?)?.toDouble() ?? 0.0;
+          final createdAt = r['created_at']?.toString() ?? '';
+          final date = createdAt.contains('T')
+              ? createdAt.replaceFirst('T', ' ').substring(0, 16)
+              : createdAt;
+
+          list.add({
+            'id': r['id']?.toString(),
+            'date': date,
+            'user': r['username']?.toString() ?? 'user',
+            'weight': weight >= 1000 ? '${(weight / 1000).toStringAsFixed(2)} kg (${weight.toStringAsFixed(0)}g)' : '${weight.toStringAsFixed(0)} g',
+            'size': r['size_label']?.toString() ?? 'Medium (10–14g)',
+            'slr': '${(juice * 0.98).toStringAsFixed(2)} ml',
+            'mlr': '${(juice * 0.99).toStringAsFixed(2)} ml',
+            'poly': '${juice.toStringAsFixed(2)} ml',
+          });
+        }
+        if (mounted) setState(() => logsList = list);
+        return;
+      }
+    } catch (_) {
+      // Offline fallback
+    }
+
+    // 2. Fallback to local logs
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('local_prediction_logs');
     if (raw != null) {
@@ -120,22 +366,22 @@ class _AdminScreenState extends State<AdminScreen> {
         setState(() {
           logsList = [
             {
-              'date': '2026-09-10 14:20',
+              'date': '2026-09-11 14:20',
               'user': 'farmer_juan',
               'weight': '1.00 kg (1000g)',
-              'size': 'Medium (Size 2)',
-              'slr': '402.30 ml',
-              'mlr': '403.10 ml',
-              'poly': '404.60 ml',
+              'size': 'Medium (10–14g)',
+              'slr': '389.20 ml',
+              'mlr': '391.45 ml',
+              'poly': '394.80 ml',
             },
             {
-              'date': '2026-09-10 12:15',
+              'date': '2026-09-11 12:15',
               'user': 'tacloban_vendor',
               'weight': '2.50 kg (2500g)',
-              'size': 'Medium (Size 2)',
-              'slr': '1005.75 ml',
-              'mlr': '1007.80 ml',
-              'poly': '1011.50 ml',
+              'size': 'Medium (10–14g)',
+              'slr': '973.00 ml',
+              'mlr': '978.60 ml',
+              'poly': '987.00 ml',
             },
           ];
         });
@@ -144,6 +390,13 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _clearLogs() async {
+    try {
+      await Supabase.instance.client
+          .from('predictions')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+    } catch (_) {}
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('local_prediction_logs');
     setState(() => logsList = []);
@@ -155,20 +408,22 @@ class _AdminScreenState extends State<AdminScreen> {
       backgroundColor: CalamansiApp.bgPage,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 16),
-                _buildAdminTabs(),
-                const SizedBox(height: 16),
-                if (activeTab == 0) _buildModelResultsTab(),
-                if (activeTab == 1) _buildUsersTab(),
-                if (activeTab == 2) _buildLogsTab(),
-              ],
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildWebHeader(),
+                  const SizedBox(height: 20),
+                  _buildAdminTabs(),
+                  const SizedBox(height: 20),
+                  if (activeTab == 0) _buildModelResultsTab(),
+                  if (activeTab == 1) _buildUsersTab(),
+                  if (activeTab == 2) _buildLogsTab(),
+                ],
+              ),
             ),
           ),
         ),
@@ -176,85 +431,141 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  // Universal Navigation Header matching Web Dashboard
+  Widget _buildWebHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: CalamansiApp.bgCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: CalamansiApp.border),
+        boxShadow: const [
+          BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 1)),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 600;
+          return Column(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: CalamansiApp.primaryLight,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Center(
-                  child: Text('🍋', style: TextStyle(fontSize: 20)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Calamansi Yield Predictor',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: CalamansiApp.textMain),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: CalamansiApp.primaryLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                          child: Text('🍋', style: TextStyle(fontSize: 24)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Admin Research & Governance Console',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: CalamansiApp.textMain),
+                          ),
+                          Text(
+                            'Leyte Normal University • Chapter 4 Evaluation & User Management',
+                            style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Admin Portal • Tacloban City Harvest Study',
-                    style: TextStyle(fontSize: 11, color: CalamansiApp.textMuted),
-                  ),
+                  if (!isNarrow)
+                    Row(
+                      children: [
+                        _buildUserBadge(),
+                        const SizedBox(width: 10),
+                        _buildSignOutBtn(),
+                      ],
+                    ),
                 ],
               ),
+              if (isNarrow) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: CalamansiApp.border),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildUserBadge(),
+                    _buildSignOutBtn(),
+                  ],
+                ),
+              ],
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildUserBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: CalamansiApp.bgSubtle,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: CalamansiApp.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xfffef08a),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              'ADMIN',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xff854d0e)),
+            ),
           ),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xffede9fe),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'ADMIN',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xff7c3aed)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.logout_rounded, size: 20, color: Color(0xffdc2626)),
-                tooltip: 'Sign out',
-                onPressed: widget.onSignOut,
-              ),
-            ],
+          const SizedBox(width: 8),
+          Text(
+            widget.user.username,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: CalamansiApp.textMain),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAdminTabs() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: CalamansiApp.bgSubtle,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: CalamansiApp.border),
+  Widget _buildSignOutBtn() {
+    return OutlinedButton(
+      onPressed: widget.onSignOut,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: CalamansiApp.textMuted,
+        side: const BorderSide(color: CalamansiApp.border),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.white,
       ),
+      child: const Text('Sign Out', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  // Admin Top Navigation Tabs matching web .admin-tabs
+  Widget _buildAdminTabs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          Expanded(child: _tabBtn('📊 Model Results', activeTab == 0, () => setState(() => activeTab = 0))),
-          Expanded(child: _tabBtn('👥 User Management', activeTab == 1, () => setState(() => activeTab = 1))),
-          Expanded(child: _tabBtn('📋 Logs', activeTab == 2, () => setState(() => activeTab = 2))),
+          _tabBtn('📊 Model Results', activeTab == 0, () => setState(() => activeTab = 0)),
+          const SizedBox(width: 8),
+          _tabBtn('👥 User Management', activeTab == 1, () => setState(() => activeTab = 1)),
+          const SizedBox(width: 8),
+          _tabBtn('📋 Prediction Logs', activeTab == 2, () => setState(() => activeTab = 2)),
         ],
       ),
     );
@@ -264,21 +575,19 @@ class _AdminScreenState extends State<AdminScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
         decoration: BoxDecoration(
-          color: active ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: active
-              ? const [BoxShadow(color: Color(0x10000000), blurRadius: 4, offset: Offset(0, 1))]
-              : null,
+          color: active ? CalamansiApp.primary : CalamansiApp.bgCard,
+          border: Border.all(color: active ? CalamansiApp.primary : CalamansiApp.border),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 2, offset: Offset(0, 1))],
         ),
         child: Text(
           title,
-          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            color: active ? CalamansiApp.primary : CalamansiApp.textMuted,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: active ? Colors.white : CalamansiApp.textMuted,
           ),
         ),
       ),
@@ -290,81 +599,98 @@ class _AdminScreenState extends State<AdminScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Dataset Summary Card
+        // Dataset Summary Card (Tacloban City Harvest Study)
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: CalamansiApp.bgCard,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: CalamansiApp.border),
+            boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 3, offset: Offset(0, 1))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Dataset Summary (Tacloban City Harvest Study)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
               ),
               const SizedBox(height: 4),
               const Text(
-                '1,292 physical calamansi extractions measured for weight, size, and juice yield.',
-                style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                '1,292 physical calamansi extractions collected and measured for weight, size category, and juice yield.',
+                style: TextStyle(fontSize: 13, color: CalamansiApp.textMuted),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
+              // 3-Stats Grid
               Row(
                 children: [
-                  _statBox('1,292', 'Total Calamansi'),
-                  const SizedBox(width: 8),
-                  _statBox('1,034', 'Training (80%)'),
-                  const SizedBox(width: 8),
-                  _statBox('258', 'Testing (20%)'),
+                  _statBox('1,292', 'Total Calamansi Samples'),
+                  const SizedBox(width: 10),
+                  _statBox('1,034', 'Training Set (80%)'),
+                  const SizedBox(width: 10),
+                  _statBox('258', 'Test Set (20%)'),
                 ],
               ),
-              const SizedBox(height: 16),
-              const Text('Calamansi Size Classification', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
-              const SizedBox(height: 8),
-              _tableRow('Small (Size 1)', '≤ 10.0 g', '412', '31.9%'),
-              _tableRow('Medium (Size 2)', '10.1–14.0 g', '568', '44.0%'),
-              _tableRow('Large (Size 3)', '> 14.0 g', '312', '24.1%'),
+              const SizedBox(height: 22),
+              const Text(
+                'Size Distribution (Dataset Classification)',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CalamansiApp.textMain),
+              ),
+              const SizedBox(height: 10),
+              // Size Classification Table matching web
+              _sizeTableHeader(),
+              _sizeTableRow('Small (Size 1)', 'Weight ≤ 10.0 g', '412', '31.9%'),
+              _sizeTableRow('Medium (Size 2)', '10.1 g ≤ Weight ≤ 14.0 g', '568', '44.0%'),
+              _sizeTableRow('Large (Size 3)', 'Weight > 14.0 g', '312', '24.1%'),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
-        // Algorithm Comparison Card
+        // Algorithm Performance Comparison Card
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: CalamansiApp.bgCard,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: CalamansiApp.border),
+            boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 3, offset: Offset(0, 1))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Algorithm Performance Comparison',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Evaluated on unseen test set (N=258):',
-                style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                'Evaluation of the three regression architectures tested on unseen test samples (N=258):',
+                style: TextStyle(fontSize: 13, color: CalamansiApp.textMuted),
               ),
-              const SizedBox(height: 14),
-              _modelPerfRow('Simple Linear', 'Weight', '0.7099', '0.5294 ml', false),
-              const SizedBox(height: 8),
-              _modelPerfRow('Multiple Linear', 'Weight, Size', '0.7100', '0.5292 ml', false),
-              const SizedBox(height: 8),
-              _modelPerfRow('Polynomial (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', true),
               const SizedBox(height: 16),
-              const Text('Mathematical Formulas', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
+              // Comparison Table Rows matching web
+              _algoTableHeader(),
+              _algoTableRow('Simple Linear Regression', 'Weight', '0.7099', '0.5294 ml', 'Baseline', false),
+              _algoTableRow('Multiple Linear Regression', 'Weight, Size', '0.7100', '0.5292 ml', 'Comparative', false),
+              _algoTableRow('Polynomial Regression (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', '★ Best Performing', true),
+
+              const SizedBox(height: 24),
+              const Text(
+                'Trained Regression Mathematical Formulas',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CalamansiApp.textMain),
+              ),
+              const SizedBox(height: 10),
+              _formulaBox('1. Simple Linear:', 'Juice (ml) = 0.4569 × Weight - 0.6080', false),
               const SizedBox(height: 8),
-              _formulaBox('1. Simple Linear', 'Juice (ml) = 0.4569 × Weight - 0.6080', false),
-              const SizedBox(height: 6),
-              _formulaBox('2. Multiple Linear', 'Juice (ml) = 0.4580 × Weight - 0.0053 × Size - 0.6108', false),
-              const SizedBox(height: 6),
-              _formulaBox('3. Polynomial (Optimal)', 'Juice = -0.5480 + 0.4357(W) + 0.0865(S) - 0.0031(W²) + 0.0474(W·S) - 0.1641(S²)', true),
+              _formulaBox('2. Multiple Linear:', 'Juice (ml) = 0.4580 × Weight - 0.0053 × Size - 0.6108', false),
+              const SizedBox(height: 8),
+              _formulaBox('3. Polynomial Regression (Degree 2) — Optimal Fit:', 'Juice (ml) = -0.5480 + 0.4357(W) + 0.0865(S) - 0.0031(W²) + 0.0474(W·S) - 0.1641(S²)', true),
+              const SizedBox(height: 12),
+              const Text(
+                'Model Evaluation: The Polynomial model achieves the lowest test error (0.5279 ml) across calamansi weights.',
+                style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted, fontStyle: FontStyle.italic),
+              ),
             ],
           ),
         ),
@@ -375,7 +701,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _statBox(String num, String label) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
           color: CalamansiApp.bgSubtle,
           borderRadius: BorderRadius.circular(10),
@@ -383,67 +709,133 @@ class _AdminScreenState extends State<AdminScreen> {
         ),
         child: Column(
           children: [
-            Text(num, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: CalamansiApp.primaryDark, fontFamily: 'monospace')),
-            const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 10, color: CalamansiApp.textMuted)),
+            Text(
+              num,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: CalamansiApp.primary, fontFamily: 'monospace'),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: CalamansiApp.textMuted),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _tableRow(String name, String weight, String count, String share) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+  Widget _sizeTableHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: CalamansiApp.bgSubtle,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        border: Border.all(color: CalamansiApp.border),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(flex: 3, child: Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-          Expanded(flex: 2, child: Text(weight, style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted))),
-          Expanded(flex: 1, child: Text(count, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-          Text(share, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: CalamansiApp.primary)),
+        children: const [
+          Expanded(flex: 3, child: Text('SIZE CATEGORY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 3, child: Text('WEIGHT RANGE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text('SAMPLE COUNT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text('SHARE', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
         ],
       ),
     );
   }
 
-  Widget _modelPerfRow(String name, String features, String r2, String mae, bool isWinner) {
+  Widget _sizeTableRow(String category, String range, String count, String share) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isWinner ? CalamansiApp.primarySoft : CalamansiApp.bgSubtle,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isWinner ? CalamansiApp.primary : CalamansiApp.border, width: isWinner ? 1.5 : 1),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(color: CalamansiApp.border),
+          right: BorderSide(color: CalamansiApp.border),
+          bottom: BorderSide(color: CalamansiApp.border),
+        ),
       ),
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain)),
-                    if (isWinner) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(color: CalamansiApp.accent, borderRadius: BorderRadius.circular(4)),
-                        child: const Text('★ Best', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700)),
-                      ),
-                    ],
-                  ],
-                ),
-                Text(features, style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
-              ],
+            flex: 3,
+            child: Text(category, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: CalamansiApp.textMain)),
+          ),
+          Expanded(flex: 3, child: Text(range, style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text(count, style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMain))),
+          Expanded(flex: 2, child: Text(share, textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: CalamansiApp.primary, fontFamily: 'monospace'))),
+        ],
+      ),
+    );
+  }
+
+  Widget _algoTableHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: CalamansiApp.bgSubtle,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        border: Border.all(color: CalamansiApp.border),
+      ),
+      child: Row(
+        children: const [
+          Expanded(flex: 4, child: Text('ALGORITHM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 3, child: Text('INPUTS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text('R²', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text('MAE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 3, child: Text('OUTCOME', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+        ],
+      ),
+    );
+  }
+
+  Widget _algoTableRow(String name, String inputs, String r2, String mae, String status, bool isWinner) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isWinner ? const Color(0xfff0fdf4) : Colors.white,
+        border: Border(
+          left: BorderSide(color: isWinner ? const Color(0xff86efac) : CalamansiApp.border),
+          right: BorderSide(color: isWinner ? const Color(0xff86efac) : CalamansiApp.border),
+          bottom: BorderSide(color: isWinner ? const Color(0xff86efac) : CalamansiApp.border),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              name,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isWinner ? FontWeight.w800 : FontWeight.w600,
+                color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain,
+              ),
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('R²: $r2', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain, fontFamily: 'monospace')),
-              Text('MAE: $mae', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted, fontFamily: 'monospace')),
-            ],
+          Expanded(flex: 3, child: Text(inputs, style: TextStyle(fontSize: 11, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text(r2, style: TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
+          Expanded(flex: 2, child: Text(mae, style: TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
+          Expanded(
+            flex: 3,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isWinner ? const Color(0xfffef3c7) : CalamansiApp.bgSubtle,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isWinner ? const Color(0xff92400e) : CalamansiApp.textMuted,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -452,18 +844,25 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _formulaBox(String title, String formula, bool highlight) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: highlight ? const Color(0xfff0fdf4) : CalamansiApp.bgSubtle,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: highlight ? const Color(0xff86efac) : CalamansiApp.border),
+        color: highlight ? const Color(0xfff0fdf4) : const Color(0xfff8fafc),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: highlight ? const Color(0xffbbf7d0) : CalamansiApp.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: highlight ? CalamansiApp.primary : CalamansiApp.textMain)),
-          const SizedBox(height: 2),
-          Text(formula, style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: CalamansiApp.textMain)),
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: highlight ? CalamansiApp.primary : CalamansiApp.textMain),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            formula,
+            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMain, height: 1.3),
+          ),
         ],
       ),
     );
@@ -472,108 +871,211 @@ class _AdminScreenState extends State<AdminScreen> {
   // ──────────────── TAB 2: User Management ────────────────
   Widget _buildUsersTab() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: CalamansiApp.bgCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: CalamansiApp.border),
+        boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 3, offset: Offset(0, 1))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('System Users', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'User Management',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Create accounts, assign roles, toggle account access, or reset user passwords.',
+                      style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
               FilledButton.icon(
                 onPressed: () => setState(() => showAddUser = !showAddUser),
                 style: FilledButton.styleFrom(
                   backgroundColor: CalamansiApp.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 icon: Icon(showAddUser ? Icons.close : Icons.add, size: 16),
-                label: Text(showAddUser ? 'Cancel' : 'Add User', style: const TextStyle(fontSize: 12)),
+                label: Text(
+                  showAddUser ? 'Cancel' : '+ Add New User',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ),
+
+          // Add User Form (Collapsible) matching web .user-create-card
           if (showAddUser) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: CalamansiApp.bgSubtle,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: CalamansiApp.border),
+                color: const Color(0xfff8fafc),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: CalamansiApp.border, width: 1.5),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: newUsername,
-                    decoration: const InputDecoration(hintText: 'Username (e.g. farmer_pedro)'),
+                  const Text(
+                    'Create New System Account',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CalamansiApp.textMain),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: newPassword,
-                    decoration: const InputDecoration(hintText: 'Password (min 4 chars)'),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _addUser,
-                      child: const Text('Save User Account'),
-                    ),
+                  const SizedBox(height: 14),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 650;
+                      if (isNarrow) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _formLabel('Username'),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: newUsername,
+                              decoration: const InputDecoration(hintText: 'e.g. farmer_pedro'),
+                            ),
+                            const SizedBox(height: 12),
+                            _formLabel('Initial Password'),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: newPassword,
+                              obscureText: true,
+                              decoration: const InputDecoration(hintText: 'Minimum 4 chars'),
+                            ),
+                            const SizedBox(height: 12),
+                            _formLabel('System Role'),
+                            const SizedBox(height: 4),
+                            _roleDropdown(),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                FilledButton(
+                                  onPressed: _addUser,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: CalamansiApp.primary,
+                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton(
+                                  onPressed: () => setState(() => showAddUser = false),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: CalamansiApp.border),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    backgroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Cancel', style: TextStyle(color: CalamansiApp.textMuted)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _formLabel('Username'),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: newUsername,
+                                  decoration: const InputDecoration(hintText: 'e.g. farmer_pedro'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _formLabel('Initial Password'),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller: newPassword,
+                                  obscureText: true,
+                                  decoration: const InputDecoration(hintText: 'Minimum 4 chars'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 4,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _formLabel('System Role'),
+                                const SizedBox(height: 4),
+                                _roleDropdown(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Row(
+                            children: [
+                              FilledButton(
+                                onPressed: _addUser,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: CalamansiApp.primary,
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+                              ),
+                              const SizedBox(width: 6),
+                              OutlinedButton(
+                                onPressed: () => setState(() => showAddUser = false),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: CalamansiApp.border),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  backgroundColor: Colors.white,
+                                ),
+                                child: const Text('Cancel', style: TextStyle(color: CalamansiApp.textMuted)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
             ),
           ],
-          const SizedBox(height: 14),
-          ...usersList.map(
-            (u) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: CalamansiApp.bgSubtle,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: CalamansiApp.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(u['username'] as String, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                        Text('Joined: ${u['joined']}', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: u['role'] == 'admin' ? const Color(0xffede9fe) : CalamansiApp.primaryLight,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      (u['role'] as String).toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: u['role'] == 'admin' ? const Color(0xff7c3aed) : CalamansiApp.primaryDark,
-                      ),
-                    ),
-                  ),
-                  if (u['username'] != 'admin') ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xffdc2626)),
-                      onPressed: () => _deleteUser(u['username'] as String),
-                    ),
-                  ],
-                ],
-              ),
+
+          const SizedBox(height: 20),
+
+          // Users Table matching web .simple-table
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 840),
+              child: _buildUsersTable(),
             ),
           ),
         ],
@@ -581,14 +1083,261 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  Widget _formLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: CalamansiApp.textMain),
+    );
+  }
+
+  Widget _roleDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: CalamansiApp.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: newRole,
+          isExpanded: true,
+          style: const TextStyle(fontSize: 13, color: CalamansiApp.textMain, fontWeight: FontWeight.w500),
+          items: const [
+            DropdownMenuItem(value: 'user', child: Text('User (Farmer / Processor)')),
+            DropdownMenuItem(value: 'admin', child: Text('Administrator (Faculty / Researcher)')),
+          ],
+          onChanged: (val) {
+            if (val != null) setState(() => newRole = val);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUsersTable() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Table Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: CalamansiApp.bgSubtle,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            border: Border.all(color: CalamansiApp.border),
+          ),
+          child: Row(
+            children: const [
+              SizedBox(width: 140, child: Text('USERNAME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 80, child: Text('ROLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 100, child: Text('STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 130, child: Text('PREDICTIONS RUN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 100, child: Text('JOINED', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              Expanded(child: Text('ACTIONS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+            ],
+          ),
+        ),
+        // Table Rows
+        ...usersList.map((u) => _buildUserTableRow(u)),
+      ],
+    );
+  }
+
+  Widget _buildUserTableRow(Map<String, dynamic> u) {
+    final username = u['username'] as String;
+    final role = u['role'] as String? ?? 'user';
+    final isAdmin = role == 'admin';
+    final status = u['status'] as String? ?? 'Active';
+    final isSuspended = status == 'Suspended';
+    final isSelf = username == widget.user.username;
+    final preds = u['predictionsCount']?.toString() ?? '0';
+    final joined = u['joined']?.toString() ?? '2026-09-01';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(color: CalamansiApp.border),
+          right: BorderSide(color: CalamansiApp.border),
+          bottom: BorderSide(color: CalamansiApp.border),
+        ),
+      ),
+      child: Row(
+        children: [
+          // 1. Username + (You)
+          SizedBox(
+            width: 140,
+            child: Row(
+              children: [
+                Text(
+                  username,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain),
+                ),
+                if (isSelf)
+                  const Text(' (You)', style: TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
+              ],
+            ),
+          ),
+          // 2. Role Badge Tag
+          SizedBox(
+            width: 80,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isAdmin ? const Color(0xfffef08a) : CalamansiApp.primaryLight,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isAdmin ? 'ADMIN' : 'USER',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isAdmin ? const Color(0xff854d0e) : CalamansiApp.primaryDark,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 3. Status Badge
+          SizedBox(
+            width: 100,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isSuspended ? const Color(0xfffee2e2) : const Color(0xffdcfce7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isSuspended ? const Color(0xff991b1b) : const Color(0xff166534),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 4. Predictions Count
+          SizedBox(
+            width: 130,
+            child: Text(
+              preds,
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.w700, color: CalamansiApp.textMain),
+            ),
+          ),
+          // 5. Joined Date
+          SizedBox(
+            width: 100,
+            child: Text(
+              joined,
+              style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: CalamansiApp.textMuted),
+            ),
+          ),
+          // 6. Action Button Group
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                // Toggle Status (Suspend / Activate)
+                _tableActionBtn(
+                  label: isSuspended ? 'Activate' : 'Suspend',
+                  isDanger: false,
+                  isSuccess: isSuspended,
+                  disabled: isSelf,
+                  onTap: () => _toggleUserStatus(username),
+                ),
+                // Toggle Role (Make Admin / Make User)
+                _tableActionBtn(
+                  label: isAdmin ? 'Make User' : 'Make Admin',
+                  isDanger: false,
+                  isSuccess: false,
+                  disabled: isSelf,
+                  onTap: () => _toggleUserRole(username),
+                ),
+                // Reset Password
+                _tableActionBtn(
+                  label: 'Reset Password',
+                  isDanger: false,
+                  isSuccess: false,
+                  disabled: false,
+                  onTap: () => _showResetPasswordDialog(username),
+                ),
+                // Delete Button
+                _tableActionBtn(
+                  label: 'Delete',
+                  isDanger: true,
+                  isSuccess: false,
+                  disabled: isSelf || username == 'admin',
+                  onTap: () => _deleteUser(username),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tableActionBtn({
+    required String label,
+    required bool isDanger,
+    required bool isSuccess,
+    required bool disabled,
+    required VoidCallback onTap,
+  }) {
+    Color textColor = CalamansiApp.textMuted;
+    Color bgColor = Colors.white;
+    Color borderColor = CalamansiApp.border;
+
+    if (disabled) {
+      textColor = const Color(0xffcbd5e1);
+      bgColor = const Color(0xfff8fafc);
+      borderColor = const Color(0xffe2e8f0);
+    } else if (isDanger) {
+      textColor = const Color(0xffdc2626);
+    } else if (isSuccess) {
+      textColor = CalamansiApp.primary;
+    }
+
+    return InkWell(
+      onTap: disabled ? null : onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: bgColor,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+      ),
+    );
+  }
+
   // ──────────────── TAB 3: Prediction Logs ────────────────
   Widget _buildLogsTab() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: CalamansiApp.bgCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: CalamansiApp.border),
+        boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 3, offset: Offset(0, 1))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,55 +1345,152 @@ class _AdminScreenState extends State<AdminScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Prediction History Logs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: CalamansiApp.textMain)),
-              TextButton.icon(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'User Prediction History',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Logs of batch weights and outputs run on the system.',
+                    style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                  ),
+                ],
+              ),
+              OutlinedButton(
                 onPressed: _clearLogs,
-                icon: const Icon(Icons.delete_sweep, size: 16, color: Color(0xffdc2626)),
-                label: const Text('Clear', style: TextStyle(color: Color(0xffdc2626), fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xffdc2626),
+                  side: const BorderSide(color: Color(0xfffecaca)),
+                  backgroundColor: const Color(0xfffef2f2),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Clear Logs', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           if (logsList.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text('No prediction logs recorded yet.', style: TextStyle(color: CalamansiApp.textMuted, fontSize: 13))),
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Text('No prediction logs recorded yet.', style: TextStyle(color: CalamansiApp.textMuted, fontSize: 13)),
+              ),
             )
           else
-            ...logsList.map(
-              (l) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: CalamansiApp.bgSubtle,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: CalamansiApp.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(l['user'] ?? 'user', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                        Text(l['date'] ?? '', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text('Batch Weight: ${l['weight']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: CalamansiApp.primaryDark)),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('SLR: ${l['slr']}', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted, fontFamily: 'monospace')),
-                        Text('MLR: ${l['mlr']}', style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted, fontFamily: 'monospace')),
-                        Text('Poly (Best): ${l['poly']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.primary, fontFamily: 'monospace')),
-                      ],
-                    ),
-                  ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 840),
+                child: _buildLogsTable(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogsTable() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Table Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: CalamansiApp.bgSubtle,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            border: Border.all(color: CalamansiApp.border),
+          ),
+          child: Row(
+            children: const [
+              SizedBox(width: 140, child: Text('DATE & TIME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 120, child: Text('USER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 130, child: Text('BATCH WEIGHT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 130, child: Text('ASSIGNED GRADE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 110, child: Text('SIMPLE LINEAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 110, child: Text('MULTIPLE LINEAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              Expanded(child: Text('POLYNOMIAL (BEST)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+            ],
+          ),
+        ),
+        // Table Rows
+        ...logsList.map((log) => _buildLogsTableRow(log)),
+      ],
+    );
+  }
+
+  Widget _buildLogsTableRow(Map<String, dynamic> log) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(color: CalamansiApp.border),
+          right: BorderSide(color: CalamansiApp.border),
+          bottom: BorderSide(color: CalamansiApp.border),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              log['date'] ?? '',
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted),
+            ),
+          ),
+          SizedBox(
+            width: 120,
+            child: Text(
+              log['user'] ?? 'user',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain),
+            ),
+          ),
+          SizedBox(
+            width: 130,
+            child: Text(
+              log['weight'] ?? '',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: CalamansiApp.textMain),
+            ),
+          ),
+          SizedBox(
+            width: 130,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: CalamansiApp.primaryLight, borderRadius: BorderRadius.circular(4)),
+                child: Text(
+                  log['size'] ?? '',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: CalamansiApp.primaryDark),
                 ),
               ),
             ),
+          ),
+          SizedBox(
+            width: 110,
+            child: Text(
+              log['slr'] ?? '',
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted),
+            ),
+          ),
+          SizedBox(
+            width: 110,
+            child: Text(
+              log['mlr'] ?? '',
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              log['poly'] ?? '',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: CalamansiApp.primary, fontFamily: 'monospace'),
+            ),
+          ),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config.dart';
 import '../models.dart';
 
@@ -124,6 +125,22 @@ class PredictionService {
 
     const sizeLabel = 'Medium Calamansi (10–14g)';
     await _saveLocalLog(username, weightG, sizeLabel, results);
+
+    // Save directly to Supabase SQL predictions table
+    try {
+      final polyResult = results.firstWhere(
+        (r) => r.algorithm.contains('Polynomial'),
+        orElse: () => results.last,
+      );
+      await Supabase.instance.client.from('predictions').insert({
+        'user_id': userId,
+        'username': username,
+        'weight_g': weightG,
+        'algorithm': polyResult.algorithm,
+        'predicted_juice': polyResult.juiceMl,
+        'size_label': sizeLabel,
+      });
+    } catch (_) {}
 
     return PredictionResponse(
       results: results,

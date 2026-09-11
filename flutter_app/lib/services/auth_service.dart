@@ -11,28 +11,60 @@ class AuthService {
 
   String _hash(String password) => sha256.convert(utf8.encode(password)).toString();
 
-  // Demo fallback accounts matching web/app.js
+  // Demo fallback accounts with deterministic UUIDs matching Supabase SQL seeds
   static final List<Map<String, String>> _defaultUsers = [
-    {'username': 'farmer_juan', 'password': 'user123', 'role': 'user'},
-    {'username': 'admin', 'password': 'admin123', 'role': 'admin'},
-    {'username': 'tacloban_vendor', 'password': 'user123', 'role': 'user'},
+    {
+      'id': '00000000-0000-0000-0000-000000000001',
+      'username': 'admin',
+      'password': 'admin123',
+      'role': 'admin',
+      'status': 'Active',
+    },
+    {
+      'id': '00000000-0000-0000-0000-000000000002',
+      'username': 'farmer_juan',
+      'password': 'user123',
+      'role': 'user',
+      'status': 'Active',
+    },
+    {
+      'id': '00000000-0000-0000-0000-000000000003',
+      'username': 'tacloban_vendor',
+      'password': 'user123',
+      'role': 'user',
+      'status': 'Active',
+    },
   ];
 
   Future<AppUser?> login(String username, String password) async {
     final cleanUsername = username.trim().toLowerCase();
     final cleanPassword = password.trim();
 
-    // 1. Check local demo accounts first for instant offline/demo login
-    for (final demo in _defaultUsers) {
-      if (demo['username']!.toLowerCase() == cleanUsername && demo['password'] == cleanPassword) {
+    // 1. Try Supabase cloud SQL database first if available
+    try {
+      final response = await client
+          .from('app_users')
+          .select('id, username, role, status')
+          .eq('username', cleanUsername)
+          .eq('password', _hash(cleanPassword))
+          .maybeSingle();
+
+      if (response != null) {
+        final status = response['status']?.toString() ?? 'Active';
+        if (status.toLowerCase() == 'suspended') {
+          throw Exception('This account has been suspended by an administrator.');
+        }
         final user = AppUser(
-          id: demo['username']!,
-          username: demo['username']!,
-          role: demo['role']!,
+          id: response['id'].toString(),
+          username: response['username'].toString(),
+          role: response['role']?.toString() ?? 'user',
         );
         await _saveSession(user);
         return user;
       }
+    } catch (e) {
+      if (e.toString().contains('suspended')) rethrow;
+      // Network failure or offline -> fallback to local accounts
     }
 
     // 2. Check local stored registered users
@@ -43,8 +75,12 @@ class AuthService {
       for (final item in localUsers) {
         if (item['username'].toString().toLowerCase() == cleanUsername &&
             item['password'] == cleanPassword) {
+          final status = item['status']?.toString() ?? 'Active';
+          if (status.toLowerCase() == 'suspended') {
+            throw Exception('This account has been suspended by an administrator.');
+          }
           final user = AppUser(
-            id: item['username'].toString(),
+            id: item['id']?.toString() ?? item['username'].toString(),
             username: item['username'].toString(),
             role: item['role']?.toString() ?? 'user',
           );
@@ -54,22 +90,17 @@ class AuthService {
       }
     }
 
-    // 3. Try Supabase cloud database if available
-    try {
-      final response = await client
-          .from('app_users')
-          .select('id, username, role')
-          .eq('username', cleanUsername)
-          .eq('password', _hash(cleanPassword))
-          .maybeSingle();
-
-      if (response != null) {
-        final user = AppUser.fromMap(response);
+    // 3. Check local demo accounts
+    for (final demo in _defaultUsers) {
+      if (demo['username']!.toLowerCase() == cleanUsername && demo['password'] == cleanPassword) {
+        final user = AppUser(
+          id: demo['id']!,
+          username: demo['username']!,
+          role: demo['role']!,
+        );
         await _saveSession(user);
         return user;
       }
-    } catch (_) {
-      // Offline or network error
     }
 
     return null;
@@ -97,23 +128,25 @@ class AuthService {
       }
     }
 
-    // Save locally
-    localUsers.add({
-      'username': cleanUsername,
-      'password': cleanPassword,
-      'role': 'user',
-      'created_at': DateTime.now().toIso8601String(),
-    });
-    await prefs.setString('local_registered_users', jsonEncode(localUsers));
-
-    // Also attempt remote save
+    // Attempt remote save in Supabase app_users table
     try {
       await client.from('app_users').insert({
         'username': cleanUsername,
         'password': _hash(cleanPassword),
         'role': 'user',
+        'status': 'Active',
       });
     } catch (_) {}
+
+    // Save locally as offline fallback
+    localUsers.add({
+      'username': cleanUsername,
+      'password': cleanPassword,
+      'role': 'user',
+      'status': 'Active',
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    await prefs.setString('local_registered_users', jsonEncode(localUsers));
 
     return null;
   }
