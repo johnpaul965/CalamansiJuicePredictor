@@ -671,9 +671,9 @@ class _AdminScreenState extends State<AdminScreen> {
               const SizedBox(height: 16),
               // Comparison Table Rows matching web
               _algoTableHeader(),
-              _algoTableRow('Simple Linear Regression', 'Weight', '0.7099', '0.5294 ml', 'Baseline', false),
-              _algoTableRow('Multiple Linear Regression', 'Weight, Size', '0.7100', '0.5292 ml', 'Comparative', false),
-              _algoTableRow('Polynomial Regression (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', '★ Best Performing', true),
+              _algoTableRow('Simple Linear Regression', 'Weight', '0.7099', '0.5294 ml', '0.6841 ml', '0.4680 ml²', '10.42%', 'Baseline', false),
+              _algoTableRow('Multiple Linear Regression', 'Weight, Size', '0.7100', '0.5292 ml', '0.6839 ml', '0.4677 ml²', '10.41%', 'Comparative', false),
+              _algoTableRow('Polynomial Regression (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', '0.6835 ml', '0.4672 ml²', '10.35%', '★ Best Performing', true),
 
               const SizedBox(height: 24),
               const Text(
@@ -779,17 +779,20 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
       child: Row(
         children: const [
-          Expanded(flex: 4, child: Text('ALGORITHM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
-          Expanded(flex: 3, child: Text('INPUTS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
-          Expanded(flex: 2, child: Text('R²', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
-          Expanded(flex: 2, child: Text('MAE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
-          Expanded(flex: 3, child: Text('OUTCOME', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 3, child: Text('ALGORITHM', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text('INPUTS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 1, child: Text('R²', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 1, child: Text('MAE', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 1, child: Text('RMSE', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 1, child: Text('MSE', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 1, child: Text('MAPE', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+          Expanded(flex: 2, child: Text('OUTCOME', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
         ],
       ),
     );
   }
 
-  Widget _algoTableRow(String name, String inputs, String r2, String mae, String status, bool isWinner) {
+  Widget _algoTableRow(String name, String inputs, String r2, String mae, String rmse, String mse, String mape, String status, bool isWinner) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -803,7 +806,7 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Row(
         children: [
           Expanded(
-            flex: 4,
+            flex: 3,
             child: Text(
               name,
               style: TextStyle(
@@ -813,11 +816,14 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
           ),
-          Expanded(flex: 3, child: Text(inputs, style: TextStyle(fontSize: 11, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMuted))),
-          Expanded(flex: 2, child: Text(r2, style: TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
-          Expanded(flex: 2, child: Text(mae, style: TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
+          Expanded(flex: 2, child: Text(inputs, style: TextStyle(fontSize: 11, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMuted))),
+          Expanded(flex: 1, child: Text(r2, textAlign: TextAlign.right, style: TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
+          Expanded(flex: 1, child: Text(mae, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
+          Expanded(flex: 1, child: Text(rmse, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
+          Expanded(flex: 1, child: Text(mse, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
+          Expanded(flex: 1, child: Text(mape, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: isWinner ? FontWeight.w800 : FontWeight.w500, color: isWinner ? CalamansiApp.primary : CalamansiApp.textMain))),
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Align(
               alignment: Alignment.centerRight,
               child: Container(
