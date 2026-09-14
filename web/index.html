@@ -3,38 +3,687 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#167d65">
-  <title>Calamansi Yield</title>
+  <title>Calamansi Yield Predictor</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main id="app" class="shell">
-    <section id="authView" class="auth-card">
-      <div class="brand-mark">◉</div>
-      <p class="eyebrow">CALAMANSI YIELD</p>
-      <h1>Measure your harvest.</h1>
-      <p class="muted">Enter a batch weight and compare all three trained prediction models.</p>
-      <form id="authForm">
-        <label>Username<input id="username" required autocomplete="username"></label>
-        <label>Password<input id="password" type="password" required autocomplete="current-password"></label>
-        <p id="authError" class="error"></p>
-        <button class="primary" type="submit">Log in</button>
-      </form>
-      <button id="registerButton" class="link-button">Create a user account</button>
-      <p class="demo">Admin demo: admin / admin123</p>
-    </section>
+  <!-- AUTH GATE -->
+  <div id="appContainer">
 
-    <section id="mainView" class="hidden">
-      <header class="topbar"><div><p class="eyebrow">CALAMANSI YIELD</p><h2>Yield predictor</h2></div><button id="logoutButton" class="ghost">Log out</button></header>
-      <section class="hero-card"><div><p class="eyebrow light">TRAINED MODEL SUITE</p><h1>Estimate your juice yield.</h1><p>One input. Three trained models. A clear comparison.</p></div><div class="fruit-orb">✦</div></section>
-      <section class="panel">
-        <label class="input-label">Batch weight in grams<input id="weightInput" type="number" min="0.01" step="0.01" value="1000" placeholder="e.g. 1000"></label>
-        <button id="predictButton" class="primary wide">Run all 3 models</button>
-        <p id="predictionError" class="error"></p>
-      </section>
-      <section id="results" class="hidden"><div class="results-heading"><div><p class="eyebrow">PREDICTION RESULTS</p><h2 id="sizeLabel">—</h2></div><span id="weightLabel" class="pill">—</span></div><div id="resultCards" class="result-grid"></div></section>
-    </section>
-  </main>
+    <!-- 1. LOGIN SCREEN (Exact match: login_screen.dart) -->
+    <main id="loginScreen" class="screen-view">
+      <div class="login-wrapper">
+        <div class="login-card">
+          <div class="lemon-logo-badge">
+            <span class="lemon-emoji">🍋</span>
+          </div>
+          <h1 class="login-app-title">Calamansi Yield Predictor</h1>
+          <p class="login-institution">Leyte Normal University • Tacloban City Harvest Study</p>
+          <p class="login-subtitle">Predict pure juice extraction yield using trained regression algorithms</p>
+
+          <!-- Sign In / Create Account Toggle -->
+          <div class="segmented-auth-control">
+            <button type="button" class="segment-btn active" id="tabSignIn">Sign In</button>
+            <button type="button" class="segment-btn" id="tabCreateAccount">Create Account</button>
+          </div>
+
+          <!-- Auth Form -->
+          <form id="authForm" novalidate>
+            <div class="flutter-field">
+              <label for="usernameInput" class="field-label">Username</label>
+              <div class="input-container">
+                <span class="prefix-icon">👤</span>
+                <input id="usernameInput" type="text" placeholder="Enter your username" autocomplete="username" required>
+              </div>
+            </div>
+
+            <div class="flutter-field">
+              <label for="passwordInput" class="field-label">Password</label>
+              <div class="input-container">
+                <span class="prefix-icon">🔒</span>
+                <input id="passwordInput" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+                <button type="button" class="suffix-toggle-btn" id="togglePasswordBtn" aria-label="Toggle password visibility">👁️</button>
+              </div>
+            </div>
+
+            <div class="flutter-field hidden" id="confirmPasswordGroup">
+              <label for="confirmPasswordInput" class="field-label">Confirm Password</label>
+              <div class="input-container">
+                <span class="prefix-icon">🔒</span>
+                <input id="confirmPasswordInput" type="password" placeholder="Re-enter password" autocomplete="new-password">
+              </div>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="authErrorBanner" class="flutter-banner error hidden">
+              <span class="banner-icon">⚠️</span>
+              <span id="authErrorMessage" class="banner-text"></span>
+            </div>
+
+            <button type="submit" class="flutter-btn primary full" id="authSubmitBtn">
+              <span id="authSubmitLabel">Sign In to Predictor</span>
+            </button>
+          </form>
+
+          <!-- DEMO ACCOUNTS DIVIDER -->
+          <div class="divider-row">
+            <div class="divider-line"></div>
+            <span class="divider-text">DEMO ACCOUNTS</span>
+            <div class="divider-line"></div>
+          </div>
+
+          <!-- DEMO ACCOUNTS BOX -->
+          <div class="demo-card">
+            <div class="demo-card-row">
+              <span class="demo-role-text">👤 User Account:</span>
+              <code class="demo-credentials-user">farmer_juan / user123</code>
+            </div>
+            <div class="demo-card-row">
+              <span class="demo-role-text">🛡️ Admin Account:</span>
+              <code class="demo-credentials-admin">admin / admin123</code>
+            </div>
+          </div>
+
+          <!-- Quick Fill Buttons -->
+          <div class="quick-fill-row">
+            <button type="button" class="flutter-btn outline flex" id="quickUserBtn">
+              <span>👤</span> Quick User
+            </button>
+            <button type="button" class="flutter-btn outline flex admin-tint" id="quickAdminBtn">
+              <span>🛡️</span> Quick Admin
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 2. MAIN APP SCAFFOLD (USER VIEW - home_screen.dart, model_results_screen.dart, history_screen.dart) -->
+    <div id="userScaffold" class="screen-view hidden">
+      <!-- Flutter AppBar -->
+      <header class="flutter-appbar">
+        <div class="appbar-title-row">
+          <div class="appbar-icon">🍋</div>
+          <div>
+            <div class="appbar-title">Calamansi Yield Predictor</div>
+            <div class="appbar-subtitle" id="userAppbarSubtitle">Leyte Normal University</div>
+          </div>
+        </div>
+        <div class="appbar-actions">
+          <div class="user-chip">
+            <span class="role-badge" id="userRolePill">USER</span>
+            <span id="headerUsername">farmer_juan</span>
+          </div>
+          <button type="button" class="flutter-btn icon-btn" id="userSignOutBtn" title="Sign Out">
+            <span>🚪</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Flutter Bottom Navigation / Top Navigation Tabs -->
+      <nav class="flutter-navtabs">
+        <button type="button" class="navtab-btn active" data-tab="predict">
+          <span class="navtab-icon">⚡</span>
+          <span>Predict</span>
+        </button>
+        <button type="button" class="navtab-btn" data-tab="results">
+          <span class="navtab-icon">📊</span>
+          <span>Model Results</span>
+        </button>
+        <button type="button" class="navtab-btn" data-tab="history">
+          <span class="navtab-icon">🕒</span>
+          <span>History</span>
+        </button>
+      </nav>
+
+      <!-- Sub-view 1: Predict (home_screen.dart) -->
+      <div id="viewPredict" class="tab-view active">
+        <div class="content-container">
+
+          <!-- Estimate Your Yield Card -->
+          <section class="flutter-card">
+            <h2 class="card-title">Estimate Your Yield</h2>
+            <p class="card-subtitle">Enter your total calamansi batch weight. All three regression models will run together.</p>
+
+            <div class="weight-control-row">
+              <span class="field-label">Total Calamansi Weight</span>
+              <div class="segmented-unit-control">
+                <button type="button" class="unit-toggle active" id="unitToggleKg">kg</button>
+                <button type="button" class="unit-toggle" id="unitToggleG">g</button>
+              </div>
+            </div>
+
+            <div class="weight-input-box">
+              <input type="number" id="batchWeightValue" class="large-number-input" min="0.01" step="any" value="1" placeholder="e.g. 1">
+              <span class="unit-suffix" id="weightUnitLabel">kg</span>
+            </div>
+
+            <!-- Quick Select Chips -->
+            <div class="quick-select-chips-container">
+              <span class="quick-select-label">Quick Select:</span>
+              <div class="chips-scroll-view" id="quickChipsContainer"></div>
+            </div>
+
+            <div id="homeErrorBanner" class="flutter-banner error hidden">
+              <span class="banner-icon">⚠️</span>
+              <span id="homeErrorMessage" class="banner-text"></span>
+            </div>
+
+            <button type="button" class="flutter-btn primary full large-action-btn" id="runAllModelsBtn">
+              <span class="btn-icon">⚡</span>
+              <span>Run all 3 models</span>
+            </button>
+          </section>
+
+          <!-- Empty State (before prediction) -->
+          <div id="predictEmptyState" class="empty-placeholder-card">
+            <div class="empty-icon-circle">📊</div>
+            <h3 class="empty-title">Ready to predict.</h3>
+            <p class="empty-desc">Enter your calamansi batch weight above and tap "Run all 3 models".</p>
+          </div>
+
+          <!-- Prediction Results Card -->
+          <section id="predictionResultsCard" class="flutter-card hidden">
+            <div class="results-header-flex">
+              <div>
+                <h2 class="card-title">Prediction Results</h2>
+                <p class="card-subtitle">Results from all three models evaluated in the research study:</p>
+              </div>
+              <div class="classification-tag" id="fruitSizeTag">🏷️ Medium Calamansi (10–14g) • ~83 calamansi</div>
+            </div>
+
+            <!-- 3 Models Comparison Grid -->
+            <div class="algorithm-grid">
+              <!-- 1. Simple Linear Regression -->
+              <div class="model-algorithm-card">
+                <div class="algo-title">Simple Linear Regression</div>
+                <div class="algo-juice-output" id="outSlrMl">389.20 ml</div>
+                <div class="algo-juice-liters" id="outSlrL">~0.3892 L</div>
+                <div class="algo-divider"></div>
+                <div class="stat-pair">
+                  <span class="stat-name">Input Feature</span>
+                  <span class="stat-value">Weight only</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">R² Score</span>
+                  <span class="stat-value">0.7099</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MAE Test</span>
+                  <span class="stat-value">0.5294 ml</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">RMSE</span>
+                  <span class="stat-value">0.6841 ml</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MSE</span>
+                  <span class="stat-value">0.4680 ml²</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MAPE</span>
+                  <span class="stat-value">10.42%</span>
+                </div>
+              </div>
+
+              <!-- 2. Multiple Linear Regression -->
+              <div class="model-algorithm-card">
+                <div class="algo-title">Multiple Linear Regression</div>
+                <div class="algo-juice-output" id="outMlrMl">391.45 ml</div>
+                <div class="algo-juice-liters" id="outMlrL">~0.3915 L</div>
+                <div class="algo-divider"></div>
+                <div class="stat-pair">
+                  <span class="stat-name">Input Feature</span>
+                  <span class="stat-value">Weight + Size</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">R² Score</span>
+                  <span class="stat-value">0.7100</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MAE Test</span>
+                  <span class="stat-value">0.5292 ml</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">RMSE</span>
+                  <span class="stat-value">0.6839 ml</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MSE</span>
+                  <span class="stat-value">0.4677 ml²</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MAPE</span>
+                  <span class="stat-value">10.41%</span>
+                </div>
+              </div>
+
+              <!-- 3. Polynomial Regression (d=2) - BEST -->
+              <div class="model-algorithm-card featured-best">
+                <div class="algo-header-row">
+                  <div class="algo-title highlight">Polynomial Regression (d=2)</div>
+                  <span class="star-best-badge">★ BEST MODEL</span>
+                </div>
+                <div class="algo-juice-output highlight" id="outPolyMl">394.80 ml</div>
+                <div class="algo-juice-liters" id="outPolyL">~0.3948 L</div>
+                <div class="algo-divider"></div>
+                <div class="stat-pair">
+                  <span class="stat-name">Input Feature</span>
+                  <span class="stat-value">Weight, Size, W², W·S, S²</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">R² Score</span>
+                  <span class="stat-value highlight">0.7102</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MAE Test</span>
+                  <span class="stat-value highlight">0.5279 ml</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">RMSE</span>
+                  <span class="stat-value highlight">0.6835 ml</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MSE</span>
+                  <span class="stat-value highlight">0.4672 ml²</span>
+                </div>
+                <div class="stat-pair">
+                  <span class="stat-name">MAPE</span>
+                  <span class="stat-value highlight">10.35%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Callout Note -->
+            <div class="research-callout">
+              <span class="callout-icon">💡</span>
+              <div class="callout-content">
+                <strong>Why Polynomial Regression (d=2) is Recommended:</strong> Evaluated on 258 unseen test samples, 2nd-degree polynomial regression achieved the highest coefficient of determination (R² = 0.7102) and lowest test error (MAE = 0.5279 ml), accurately capturing non-linear density curves in calamansi juice extractions.
+              </div>
+            </div>
+          </section>
+
+          <!-- Recent Extractions Card -->
+          <section class="flutter-card">
+            <div class="card-header-with-action">
+              <div>
+                <h2 class="card-title">Your Recent Harvests</h2>
+                <p class="card-subtitle">Batch extractions and yield estimates</p>
+              </div>
+              <button type="button" class="flutter-btn text-btn" id="refreshHomeHistoryBtn">Refresh</button>
+            </div>
+
+            <div class="table-scroll-wrapper">
+              <table class="flutter-table">
+                <thead>
+                  <tr>
+                    <th>DATE & TIME</th>
+                    <th>BATCH WEIGHT</th>
+                    <th>ASSIGNED SIZE</th>
+                    <th>SLR</th>
+                    <th>MLR</th>
+                    <th>POLYNOMIAL (BEST)</th>
+                  </tr>
+                </thead>
+                <tbody id="homeHistoryTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- Sub-view 2: Model Results (model_results_screen.dart) -->
+      <div id="viewModelResults" class="tab-view hidden">
+        <div class="content-container">
+          <div class="view-header-title">
+            <h2>Model Results</h2>
+            <p class="view-header-sub">🕒 Last trained: 2026-09-01 • Leyte Normal University Study</p>
+          </div>
+
+          <!-- Dataset Summary -->
+          <h3 class="section-heading">Dataset Summary</h3>
+          <div class="stat-cards-triad">
+            <div class="stat-metric-card">
+              <div class="metric-val">1,292</div>
+              <div class="metric-name">Total Samples</div>
+            </div>
+            <div class="stat-metric-card">
+              <div class="metric-val">1,034</div>
+              <div class="metric-name">Training (80%)</div>
+            </div>
+            <div class="stat-metric-card">
+              <div class="metric-val">258</div>
+              <div class="metric-name">Test (20%)</div>
+            </div>
+          </div>
+
+          <!-- Algorithm Performance -->
+          <h3 class="section-heading">Algorithm Performance</h3>
+          <div class="perf-cards-list">
+
+            <!-- Card 1: Polynomial (Best) -->
+            <div class="perf-card featured">
+              <div class="perf-header">
+                <h4 class="perf-name">Polynomial Regression (d=2)</h4>
+                <span class="best-pill">★ Best</span>
+              </div>
+              <div class="metric-chips-wrap">
+                <span class="metric-chip"><strong>R²</strong>: 0.7102</span>
+                <span class="metric-chip"><strong>MAE</strong>: 0.5279 ml</span>
+                <span class="metric-chip"><strong>RMSE</strong>: 0.6835 ml</span>
+                <span class="metric-chip"><strong>MSE</strong>: 0.4672 ml²</span>
+                <span class="metric-chip"><strong>MAPE</strong>: 10.35%</span>
+              </div>
+            </div>
+
+            <!-- Card 2: MLR -->
+            <div class="perf-card">
+              <div class="perf-header">
+                <h4 class="perf-name">Multiple Linear Regression</h4>
+              </div>
+              <div class="metric-chips-wrap">
+                <span class="metric-chip"><strong>R²</strong>: 0.7100</span>
+                <span class="metric-chip"><strong>MAE</strong>: 0.5292 ml</span>
+                <span class="metric-chip"><strong>RMSE</strong>: 0.6839 ml</span>
+                <span class="metric-chip"><strong>MSE</strong>: 0.4677 ml²</span>
+                <span class="metric-chip"><strong>MAPE</strong>: 10.41%</span>
+              </div>
+            </div>
+
+            <!-- Card 3: SLR -->
+            <div class="perf-card">
+              <div class="perf-header">
+                <h4 class="perf-name">Simple Linear Regression</h4>
+              </div>
+              <div class="metric-chips-wrap">
+                <span class="metric-chip"><strong>R²</strong>: 0.7099</span>
+                <span class="metric-chip"><strong>MAE</strong>: 0.5294 ml</span>
+                <span class="metric-chip"><strong>RMSE</strong>: 0.6841 ml</span>
+                <span class="metric-chip"><strong>MSE</strong>: 0.4680 ml²</span>
+                <span class="metric-chip"><strong>MAPE</strong>: 10.42%</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Formula & Coefficients -->
+          <h3 class="section-heading">Model Formulas & Coefficients</h3>
+          <div class="flutter-card">
+            <div class="formula-block">
+              <div class="formula-label">Simple Linear Regression Formula:</div>
+              <code>Juice (ml) = 0.4569 × Weight (g) - 0.6080</code>
+            </div>
+            <div class="formula-block">
+              <div class="formula-label">Multiple Linear Regression Formula:</div>
+              <code>Juice (ml) = 0.4580 × Weight (g) - 0.0053 × Size - 0.6108</code>
+            </div>
+            <div class="formula-block">
+              <div class="formula-label">Polynomial Regression (d=2) Formula:</div>
+              <code>Juice = -0.5480 + 0.4357·W + 0.0865·S - 0.0031·W² + 0.0474·W·S - 0.1641·S²</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-view 3: History (history_screen.dart) -->
+      <div id="viewHistory" class="tab-view hidden">
+        <div class="content-container">
+          <div class="view-header-title">
+            <h2>Prediction History</h2>
+            <p class="view-header-sub">Saved batch predictions and harvest calculations</p>
+          </div>
+
+          <div id="historyListContainer" class="history-cards-column"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ADMIN CONSOLE SCAFFOLD (admin_screen.dart) -->
+    <div id="adminScaffold" class="screen-view hidden">
+      <!-- Admin Top Navigation Bar matching screenshot -->
+      <div class="admin-top-tab-bar">
+        <button type="button" class="admin-top-pill active" data-admintab="0">
+          <span class="pill-icon">📊</span>
+          <span>Model Results</span>
+        </button>
+        <button type="button" class="admin-top-pill" data-admintab="1">
+          <span class="pill-icon">👥</span>
+          <span>User Management</span>
+        </button>
+        <button type="button" class="admin-top-pill" data-admintab="2">
+          <span class="pill-icon">📋</span>
+          <span>Prediction Logs</span>
+        </button>
+        <div class="admin-bar-spacer"></div>
+        <div class="admin-user-pill">
+          <span class="role-badge admin-badge">ADMIN</span>
+          <span id="adminUsername">admin</span>
+        </div>
+        <button type="button" class="admin-signout-btn" id="adminSignOutBtn" title="Sign Out">
+          <span>Sign Out</span>
+        </button>
+      </div>
+
+      <div class="admin-page-content">
+
+        <!-- Admin Tab 0: Model Results (Pixel-perfect to user's screenshot) -->
+        <div id="adminTab0" class="admin-tab-view active">
+          <!-- Card 1: Dataset Summary (Tacloban City Harvest Study) -->
+          <section class="admin-main-card">
+            <h2 class="admin-card-title">Dataset Summary (Tacloban City Harvest Study)</h2>
+            <p class="admin-card-subtitle">1,292 physical calamansi extractions collected and measured for weight, size category, and juice yield.</p>
+
+            <div class="admin-stat-triad">
+              <div class="admin-stat-box">
+                <div class="admin-stat-num">1,292</div>
+                <div class="admin-stat-lbl">Total Calamansi Samples</div>
+              </div>
+              <div class="admin-stat-box">
+                <div class="admin-stat-num">1,034</div>
+                <div class="admin-stat-lbl">Training Set (80%)</div>
+              </div>
+              <div class="admin-stat-box">
+                <div class="admin-stat-num">258</div>
+                <div class="admin-stat-lbl">Test Set (20%)</div>
+              </div>
+            </div>
+
+            <h3 class="admin-sub-heading">Size Distribution (Dataset Classification)</h3>
+
+            <div class="admin-table-container">
+              <table class="admin-clean-table">
+                <thead>
+                  <tr>
+                    <th style="width: 30%;">SIZE CATEGORY</th>
+                    <th style="width: 32%;">WEIGHT RANGE</th>
+                    <th style="width: 23%;">SAMPLE COUNT</th>
+                    <th style="width: 15%; text-align: right;">SHARE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="font-bold">Small (Size 1)</td>
+                    <td class="font-mono text-muted">Weight ≤ 10.0 g</td>
+                    <td class="font-mono">412</td>
+                    <td class="font-mono text-right text-green font-bold">31.9%</td>
+                  </tr>
+                  <tr>
+                    <td class="font-bold">Medium (Size 2)</td>
+                    <td class="font-mono text-muted">10.1 g ≤ Weight ≤ 14.0 g</td>
+                    <td class="font-mono">568</td>
+                    <td class="font-mono text-right text-green font-bold">44.0%</td>
+                  </tr>
+                  <tr>
+                    <td class="font-bold">Large (Size 3)</td>
+                    <td class="font-mono text-muted">Weight > 14.0 g</td>
+                    <td class="font-mono">312</td>
+                    <td class="font-mono text-right text-green font-bold">24.1%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Card 2: Algorithm Performance Comparison -->
+          <section class="admin-main-card">
+            <h2 class="admin-card-title">Algorithm Performance Comparison</h2>
+            <p class="admin-card-subtitle">Evaluation of the three regression architectures tested on unseen test samples (N=258):</p>
+
+            <div class="admin-table-container">
+              <table class="admin-clean-table">
+                <thead>
+                  <tr>
+                    <th>ALGORITHM</th>
+                    <th>INPUTS</th>
+                    <th style="text-align: right;">R²</th>
+                    <th style="text-align: right;">MAE</th>
+                    <th style="text-align: right;">RMSE</th>
+                    <th style="text-align: right;">MSE</th>
+                    <th style="text-align: right;">MAPE</th>
+                    <th style="text-align: right;">OUTCOME</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="font-bold">Simple Linear Regression</td>
+                    <td class="text-muted">Weight</td>
+                    <td class="font-mono text-right">0.7099</td>
+                    <td class="font-mono text-right">0.5294 ml</td>
+                    <td class="font-mono text-right">0.6841 ml</td>
+                    <td class="font-mono text-right">0.4680 ml²</td>
+                    <td class="font-mono text-right">10.42%</td>
+                    <td style="text-align: right;"><span class="badge-tag">Baseline</span></td>
+                  </tr>
+                  <tr>
+                    <td class="font-bold">Multiple Linear Regression</td>
+                    <td class="text-muted">Weight, Size</td>
+                    <td class="font-mono text-right">0.7100</td>
+                    <td class="font-mono text-right">0.5292 ml</td>
+                    <td class="font-mono text-right">0.6839 ml</td>
+                    <td class="font-mono text-right">0.4677 ml²</td>
+                    <td class="font-mono text-right">10.41%</td>
+                    <td style="text-align: right;"><span class="badge-tag">Comparative</span></td>
+                  </tr>
+                  <tr class="winner-row">
+                    <td class="font-bold text-green">Polynomial Regression (d=2)</td>
+                    <td class="text-green">Weight, Size, W², W·S, S²</td>
+                    <td class="font-mono text-right text-green font-bold">0.7102</td>
+                    <td class="font-mono text-right text-green font-bold">0.5279 ml</td>
+                    <td class="font-mono text-right text-green font-bold">0.6835 ml</td>
+                    <td class="font-mono text-right text-green font-bold">0.4672 ml²</td>
+                    <td class="font-mono text-right text-green font-bold">10.35%</td>
+                    <td style="text-align: right;"><span class="badge-tag winner-badge">★ Best Performing</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="admin-sub-heading" style="margin-top: 24px;">Trained Regression Mathematical Formulas</h3>
+
+            <div class="formula-card-list">
+              <div class="admin-formula-box">
+                <div class="admin-formula-title">1. Simple Linear:</div>
+                <div class="admin-formula-code">Juice (ml) = 0.4569 × Weight - 0.6080</div>
+              </div>
+              <div class="admin-formula-box">
+                <div class="admin-formula-title">2. Multiple Linear:</div>
+                <div class="admin-formula-code">Juice (ml) = 0.4580 × Weight - 0.0053 × Size - 0.6108</div>
+              </div>
+              <div class="admin-formula-box winner-formula">
+                <div class="admin-formula-title text-green">3. Polynomial Regression (Degree 2) — Optimal Fit:</div>
+                <div class="admin-formula-code">Juice (ml) = -0.5480 + 0.4357(W) + 0.0865(S) - 0.0031(W²) + 0.0474(W·S) - 0.1641(S²)</div>
+              </div>
+            </div>
+            <p class="admin-note-footer">Model Evaluation: The Polynomial model achieves the lowest test error (0.5279 ml) across calamansi weights.</p>
+          </section>
+        </div>
+
+        <!-- Admin Tab 1: User Management -->
+        <div id="adminTab1" class="admin-tab-view hidden">
+          <section class="admin-main-card">
+            <div class="admin-card-header-flex">
+              <div>
+                <h2 class="admin-card-title">User Accounts</h2>
+                <p class="admin-card-subtitle">Manage authorized farmers and system researchers</p>
+              </div>
+              <button type="button" class="flutter-btn primary" id="openAddUserModalBtn">+ Create User</button>
+            </div>
+
+            <div class="admin-user-cards-list" id="adminUserCardsContainer">
+              <!-- Rendered dynamically by app.js matching Flutter layout -->
+            </div>
+          </section>
+        </div>
+
+        <!-- Admin Tab 2: Prediction Logs -->
+        <div id="adminTab2" class="admin-tab-view hidden">
+          <section class="admin-main-card">
+            <div class="admin-card-header-flex">
+              <div>
+                <h2 class="admin-card-title">User Prediction History</h2>
+                <p class="admin-card-subtitle">Logs of batch weights and outputs run on the system.</p>
+              </div>
+              <div class="admin-btn-row">
+                <button type="button" class="admin-outline-btn" id="exportLogsCsvBtn">📥 Export CSV</button>
+                <button type="button" class="admin-outline-btn danger" id="clearAllLogsBtn">Clear Logs</button>
+              </div>
+            </div>
+
+            <div class="admin-table-container">
+              <table class="admin-clean-table">
+                <thead>
+                  <tr>
+                    <th>DATE & TIME</th>
+                    <th>USER</th>
+                    <th>BATCH WEIGHT</th>
+                    <th>ASSIGNED GRADE</th>
+                    <th>SIMPLE LINEAR</th>
+                    <th>MULTIPLE LINEAR</th>
+                    <th>POLYNOMIAL (BEST)</th>
+                  </tr>
+                </thead>
+                <tbody id="adminLogsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Add User Modal (matching Flutter showDialog) -->
+  <div id="addUserModal" class="flutter-dialog-overlay hidden">
+    <div class="flutter-dialog">
+      <div class="dialog-header">
+        <h3 class="dialog-title">Create New Account</h3>
+        <button type="button" class="dialog-close" id="closeAddUserModal">×</button>
+      </div>
+      <form id="addUserForm">
+        <div class="flutter-field">
+          <label for="newUsername">Username</label>
+          <input type="text" id="newUsername" placeholder="e.g. farmer_elena" required>
+        </div>
+        <div class="flutter-field">
+          <label for="newPassword">Password</label>
+          <input type="password" id="newPassword" placeholder="Minimum 4 characters" required>
+        </div>
+        <div class="flutter-field">
+          <label for="newRole">Role</label>
+          <select id="newRole">
+            <option value="user">User (Farmer / Researcher)</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="flutter-btn text-btn" id="cancelAddUser">Cancel</button>
+          <button type="submit" class="flutter-btn primary">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>

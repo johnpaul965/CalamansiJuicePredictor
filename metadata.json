@@ -1,0 +1,6 @@
+{
+  "name": "Calamansi Yield",
+  "description": "Estimate calamansi juice yield with trained prediction models comparing simple, multiple, and polynomial regression.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

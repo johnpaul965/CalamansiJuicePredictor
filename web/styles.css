@@ -1,2 +1,1472 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap');
-:root{font-family:'DM Sans',sans-serif;color:#17332b;background:#f4f8f4;--green:#167d65;--dark:#17332b;--soft:#e6f2ec;--line:#d8e6de}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 90% 0,#e0f0e6,transparent 35%),#f4f8f4}h1,h2,p{margin:0}h1,h2{font-family:'Space Grotesk',sans-serif}h1{font-size:clamp(2rem,5vw,3.8rem);line-height:1.05;letter-spacing:-.05em}h2{font-size:2rem;letter-spacing:-.04em}.shell{width:min(960px,100%);margin:auto;padding:32px 20px 64px}.auth-card{width:min(430px,100%);margin:8vh auto 0;padding:36px;background:#fff;border:1px solid var(--line);border-radius:28px;box-shadow:0 22px 60px #1a5c4614}.brand-mark{width:58px;height:58px;display:grid;place-items:center;background:var(--green);color:white;border-radius:18px;font-size:30px}.eyebrow{color:var(--green);font-weight:700;font-size:.72rem;letter-spacing:.14em;margin-bottom:12px}.light{color:#c8ead9}.muted{color:#60746b;line-height:1.6;margin-top:16px}.demo{font-size:.78rem;color:#82918b;text-align:center;margin-top:24px}form{display:grid;gap:16px;margin-top:28px}label{display:grid;gap:8px;font-size:.85rem;font-weight:700;color:#385449}input{width:100%;border:1px solid var(--line);border-radius:13px;padding:14px 15px;font:inherit;font-size:1rem;background:#fbfdfb;color:var(--dark);outline:none}input:focus{border-color:var(--green);box-shadow:0 0 0 4px #167d6514}button{border:0;border-radius:13px;padding:14px 18px;font:inherit;font-weight:700;cursor:pointer;transition:.2s}button:hover{transform:translateY(-1px)}.primary{background:var(--green);color:#fff}.primary:hover{background:#106650}.wide{width:100%;margin-top:20px}.link-button,.ghost{background:transparent;color:var(--green);width:100%;margin-top:10px}.ghost{width:auto;margin:0;padding:10px 14px;color:var(--dark);border:1px solid var(--line)}.error{min-height:20px;color:#b33b39;font-size:.86rem;margin-top:8px}.hidden{display:none!important}.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px}.topbar .eyebrow{margin-bottom:4px}.topbar h2{font-size:1.4rem}.hero-card{display:flex;justify-content:space-between;align-items:center;overflow:hidden;padding:34px;border-radius:28px;background:linear-gradient(120deg,#146e59,#229274);color:white;box-shadow:0 18px 45px #167d6530}.hero-card p:not(.eyebrow){color:#dcf2e7;line-height:1.6;margin-top:14px}.fruit-orb{width:120px;height:120px;display:grid;place-items:center;border-radius:50%;background:#ffffff1c;border:1px solid #ffffff4a;font-size:56px;color:#e8faef}.panel{background:white;border:1px solid var(--line);border-radius:22px;padding:24px;margin-top:20px}.input-label{font-size:1rem}.results-heading{display:flex;justify-content:space-between;align-items:end;margin:40px 0 18px}.pill{padding:8px 12px;border-radius:99px;background:var(--soft);color:var(--green);font-weight:700;font-size:.85rem}.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.result-card{background:white;border:1px solid var(--line);border-radius:20px;padding:20px;animation:rise .35s ease both}.result-card:nth-child(2){animation-delay:.06s}.result-card:nth-child(3){animation-delay:.12s}.result-card h3{font-size:.95rem;line-height:1.35;margin-bottom:22px}.juice{font-family:'Space Grotesk';font-size:2rem;font-weight:700;color:var(--green)}.liters{color:#7a8c84;margin-top:4px}@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}@media(max-width:700px){.shell{padding:20px 14px 40px}.hero-card{padding:26px}.fruit-orb{width:76px;height:76px;font-size:32px}.result-grid{grid-template-columns:1fr}.results-heading{margin-top:30px}}
+/* Calamansi Yield Predictor - Complete Web Styling Matching Flutter App
+   Exact color scheme, typography, card shapes, and component aesthetics from flutter_app
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap');
+
+:root {
+  /* Flutter Theme Colors from CalamansiApp */
+  --primary: #15803d;         /* const Color(0xff15803d) */
+  --primary-light: #dcfce7;   /* const Color(0xffdcfce7) */
+  --primary-dark: #14532d;    /* const Color(0xff14532d) */
+  --accent: #f59e0b;          /* const Color(0xfff59e0b) */
+  --bg-page: #f8fafc;         /* const Color(0xfff8fafc) */
+  --bg-card: #ffffff;         /* Colors.white */
+  --bg-subtle: #f1f5f9;       /* const Color(0xfff1f5f9) */
+  --border: #e2e8f0;          /* const Color(0xffe2e8f0) */
+  --border-focus: #16a34a;    /* const Color(0xff16a34a) */
+  --text-main: #0f172a;       /* const Color(0xff0f172a) */
+  --text-muted: #64748b;      /* const Color(0xff64748b) */
+  --text-dim: #94a3b8;        /* const Color(0xff94a3b8) */
+  --danger: #dc2626;          /* const Color(0xffdc2626) */
+  --danger-light: #fef2f2;
+  --danger-border: #fecaca;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Screen Shell */
+.screen-view {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ────────── 1. LOGIN SCREEN (login_screen.dart) ────────── */
+#loginScreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background-color: var(--bg-page);
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 440px;
+}
+
+.login-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.lemon-logo-badge {
+  width: 54px;
+  height: 54px;
+  background: var(--primary-light);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.lemon-emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.login-app-title {
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--text-main);
+}
+
+.login-institution {
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.login-subtitle {
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-dim);
+  margin-top: 2px;
+  margin-bottom: 20px;
+}
+
+/* Segmented Tabs (Sign In / Create Account) */
+.segmented-auth-control {
+  display: flex;
+  background: var(--bg-subtle);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+
+.segment-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.segment-btn.active {
+  background: #ffffff;
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Form Fields */
+.flutter-field {
+  margin-bottom: 14px;
+}
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-container input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background-color: #ffffff;
+  color: var(--text-main);
+  transition: border-color 0.15s;
+}
+
+.input-container input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.prefix-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.suffix-toggle-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+/* Flutter Banners */
+.flutter-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+
+.flutter-banner.error {
+  background: var(--danger-light);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+/* Flutter Buttons */
+.flutter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.flutter-btn.primary {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.flutter-btn.primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.flutter-btn.outline {
+  background-color: #ffffff;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.flutter-btn.outline:hover {
+  background-color: var(--bg-subtle);
+  color: var(--text-main);
+}
+
+.flutter-btn.full {
+  width: 100%;
+}
+
+.flutter-btn.flex {
+  flex: 1;
+}
+
+.flutter-btn.text-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.flutter-btn.text-btn:hover {
+  color: var(--text-main);
+}
+
+.flutter-btn.danger {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background-color: var(--danger-light);
+}
+
+/* Dividers */
+.divider-row {
+  display: flex;
+  align-items: center;
+  margin: 20px 0 14px;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border);
+}
+
+.divider-text {
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* Demo Card */
+.demo-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.demo-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.demo-role-text {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.demo-card-row code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+.quick-fill-row {
+  display: flex;
+  gap: 10px;
+}
+
+/* ────────── 2. APPBAR & NAVBAR (home_screen.dart) ────────── */
+.flutter-appbar {
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.appbar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.appbar-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--primary-light);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+}
+
+.appbar-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.appbar-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.appbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.role-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.role-badge.user-badge {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.role-badge.admin-badge {
+  background: #fef08a;
+  color: #854d0e;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--bg-subtle);
+}
+
+/* Navigation Tabs */
+.flutter-navtabs {
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  gap: 8px;
+}
+
+.navtab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.navtab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.content-container {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* Flutter Card */
+.flutter-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.card-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  margin-bottom: 16px;
+}
+
+.card-header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+/* Unit Toggle & Input Row */
+.weight-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.segmented-unit-control {
+  display: inline-flex;
+  background: var(--bg-subtle);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.unit-toggle,
+.unit-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.unit-toggle.active,
+.unit-btn.active {
+  background: #ffffff;
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.weight-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.weight-input-box input,
+.large-number-input {
+  width: 100%;
+  padding: 12px 64px 12px 16px;
+  font-size: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-main);
+  background: #ffffff;
+}
+
+.weight-input-box input:focus,
+.large-number-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.unit-suffix,
+.unit-tag {
+  position: absolute;
+  right: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Quick Select Chips */
+.quick-select-chips-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.quick-select-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.chips-scroll-view {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.flutter-chip,
+.preset-chip {
+  padding: 6px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.flutter-chip:hover,
+.preset-chip:hover {
+  background: #ffffff;
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.large-action-btn {
+  margin-top: 6px;
+  font-size: 14px;
+  padding: 12px 18px;
+}
+
+/* Empty State */
+.empty-placeholder-card {
+  background: #ffffff;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.empty-icon-circle {
+  font-size: 38px;
+  margin-bottom: 8px;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.empty-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Results Header Flex */
+.results-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.classification-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+}
+
+/* 3 Algorithm Prediction Cards */
+.algorithm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.model-algorithm-card,
+.algo-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.model-algorithm-card.featured-best,
+.algo-card.featured {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.algo-header-row,
+.algo-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.algo-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.algo-title.highlight {
+  color: var(--primary-dark);
+}
+
+.star-best-badge {
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.algo-juice-output {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.5px;
+  margin-top: 10px;
+  line-height: 1.1;
+}
+
+.algo-juice-output.highlight {
+  color: #15803d;
+}
+
+.algo-juice-liters {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.algo-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0 10px;
+}
+
+.stat-pair {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.stat-name {
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.stat-value.highlight {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* Callout Note */
+.research-callout {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.4;
+}
+
+.callout-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* Table scroll wrapper */
+.table-scroll-wrapper {
+  overflow-x: auto;
+}
+
+.flutter-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.flutter-table thead th {
+  background: var(--bg-subtle);
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.flutter-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+/* Sub-views Header */
+.view-header-title {
+  margin-bottom: 20px;
+}
+
+.view-header-title h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.view-header-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.section-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.stat-cards-triad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.stat-metric-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.metric-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.metric-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.perf-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.perf-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.perf-card.featured {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.perf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.perf-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.best-pill {
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.metric-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metric-chip {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-main);
+}
+
+.formula-block {
+  margin-bottom: 12px;
+}
+
+.formula-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.formula-block code {
+  display: block;
+  background: var(--bg-subtle);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+/* History cards */
+.history-cards-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-card-item {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.history-card-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* ────────── 3. ADMIN CONSOLE (PIXEL-PERFECT TO USER'S FLUTTER SCREENSHOT) ────────── */
+.admin-top-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  background: transparent;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.admin-top-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: #475569;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+}
+
+.admin-top-pill.active {
+  background: #15803d;
+  color: #ffffff;
+  border-color: #15803d;
+}
+
+.admin-top-pill.active .pill-icon {
+  filter: brightness(1.2);
+}
+
+.admin-bar-spacer {
+  flex: 1;
+}
+
+.admin-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.admin-signout-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.admin-signout-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-main);
+}
+
+.admin-page-content {
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px 32px;
+}
+
+.admin-main-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.admin-card-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.2px;
+}
+
+.admin-card-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+  margin-bottom: 20px;
+}
+
+/* 3-Stat Boxes matching screenshot */
+.admin-stat-triad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.admin-stat-box {
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 14px;
+  text-align: center;
+}
+
+.admin-stat-num {
+  font-size: 24px;
+  font-weight: 800;
+  color: #15803d;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+
+.admin-stat-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.admin-sub-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+/* Clean Admin Tables matching Flutter & Screenshot */
+.admin-table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+}
+
+.admin-clean-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.admin-clean-table thead th {
+  background: #f1f5f9;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.4px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.admin-clean-table thead th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.admin-clean-table thead th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.admin-clean-table tbody td {
+  background: #ffffff;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+.admin-clean-table tbody tr.winner-row td {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.admin-clean-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 8px;
+}
+
+.admin-clean-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 8px;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.text-muted {
+  color: #64748b;
+}
+
+.text-green {
+  color: #15803d;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.badge-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.badge-tag.winner-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Formula list */
+.formula-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-formula-box {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.admin-formula-box.winner-formula {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.admin-formula-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.admin-formula-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.admin-note-footer {
+  font-size: 12px;
+  font-style: italic;
+  color: #64748b;
+  margin-top: 14px;
+}
+
+/* Admin Card Header Flex */
+.admin-card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.admin-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-outline-btn {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+}
+
+.admin-outline-btn.danger {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+/* User Card List matching Flutter UI */
+.admin-user-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-row-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.user-row-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-avatar-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+}
+
+.user-avatar-box.admin {
+  background: #fef08a;
+}
+
+.user-avatar-box.user {
+  background: #dcfce7;
+}
+
+.user-meta-lines {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-header-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-card-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.user-card-self {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.user-badge-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.user-badge-pill.admin {
+  background: #fef08a;
+  color: #854d0e;
+}
+
+.user-badge-pill.user {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-badge-pill.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-pill.suspended {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.user-card-joined {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.user-row-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.user-action-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.user-action-btn:hover {
+  background: #f1f5f9;
+}
+
+.user-action-btn.active-toggle {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #16a34a;
+}
+
+.user-action-btn.delete {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.user-action-btn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  background: #ffffff;
+}
+
+/* ────────── FLUTTER DIALOG OVERLAY (showDialog) ────────── */
+.flutter-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 999;
+}
+
+.flutter-dialog {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.dialog-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-stat-triad {
+    grid-template-columns: 1fr;
+  }
+  .user-row-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .algorithm-grid {
+    grid-template-columns: 1fr;
+  }
+  .stat-cards-triad {
+    grid-template-columns: 1fr;
+  }
+}

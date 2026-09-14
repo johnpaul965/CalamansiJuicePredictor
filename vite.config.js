@@ -3,10 +3,16 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   root: 'web',
   server: {
-    port: 5173,
-    host: true,
+    host: '0.0.0.0',
+    port: 3000,
+    allowedHosts: 'all',
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 3000,
   },
   build: {
-    outDir: 'dist',
+    outDir: '../dist',
+    emptyOutDir: true,
   },
 });
