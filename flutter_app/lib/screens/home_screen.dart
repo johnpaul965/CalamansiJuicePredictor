@@ -68,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'date': date,
             'user': r['username']?.toString() ?? widget.user.username,
             'weight': weight >= 1000 ? '${(weight / 1000).toStringAsFixed(2)} kg (${weight.toStringAsFixed(0)}g)' : '${weight.toStringAsFixed(0)} g',
-            'size': r['size_label']?.toString() ?? 'Medium (10–14g)',
+            'size': r['size_label']?.toString() ?? 'Medium Calamansi (10–14g)',
             'slr': '${(juice * 0.98).toStringAsFixed(2)} ml',
             'mlr': '${(juice * 0.99).toStringAsFixed(2)} ml',
             'poly': '${juice.toStringAsFixed(2)} ml',
@@ -99,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
               'date': '2026-09-11 15:30',
               'user': widget.user.username,
               'weight': '1.00 kg (1000g)',
-              'size': 'Medium (10–14g)',
+              'size': 'Medium Calamansi (10–14g)',
               'slr': '389.20 ml',
               'mlr': '391.45 ml',
               'poly': '394.80 ml',
@@ -108,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
               'date': '2026-09-11 11:15',
               'user': widget.user.username,
               'weight': '5.00 kg (5000g)',
-              'size': 'Medium (10–14g)',
+              'size': 'Medium Calamansi (10–14g)',
               'slr': '1946.00 ml',
               'mlr': '1957.25 ml',
               'poly': '1974.00 ml',
@@ -134,10 +134,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _setPresetWeight(double kg) {
+  void _setPresetWeight(double val) {
     setState(() {
-      unit = 'kg';
-      weight.text = kg.toStringAsFixed(0);
+      weight.text = val >= 1 ? val.toStringAsFixed(0) : val.toString();
       error = null;
     });
     runPrediction();
@@ -411,7 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Quick Presets matching web buttons
+          // Quick Presets dynamically adapting to selected unit (kg or g)
           Row(
             children: [
               const Text('Quick Select: ', style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted, fontWeight: FontWeight.w500)),
@@ -420,13 +419,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: [
-                      _quickChip('1 kg', 1),
-                      _quickChip('5 kg', 5),
-                      _quickChip('10 kg', 10),
-                      _quickChip('25 kg', 25),
-                      _quickChip('50 kg', 50),
-                    ],
+                    children: unit == 'kg'
+                        ? [
+                            _quickChip('1 kg', 1),
+                            _quickChip('5 kg', 5),
+                            _quickChip('10 kg', 10),
+                            _quickChip('25 kg', 25),
+                            _quickChip('50 kg', 50),
+                          ]
+                        : [
+                            _quickChip('250 g', 250),
+                            _quickChip('500 g', 500),
+                            _quickChip('1000 g', 1000),
+                            _quickChip('2500 g', 2500),
+                            _quickChip('5000 g', 5000),
+                          ],
                   ),
                 ),
               ),
@@ -559,8 +566,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               const Text(
                 'Prediction Results',
@@ -819,12 +829,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    'Recent Harvest Records',
+                    'Your Recent Harvests',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Prediction history logs stored for this session',
+                    'Recent batch extractions and yield estimates recorded in Supabase',
                     style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
                   ),
                 ],
@@ -845,66 +855,115 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             )
           else
-            ...recentHarvests.take(5).map((log) => _buildHarvestRow(log)),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: 830,
+                child: _buildHarvestsTable(),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildHarvestRow(Map<String, dynamic> log) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: CalamansiApp.bgSubtle,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: CalamansiApp.border),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    log['weight'] ?? '',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: CalamansiApp.textMain),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: CalamansiApp.primaryLight,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      log['size'] ?? '',
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: CalamansiApp.primaryDark),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Date: ${log['date'] ?? ''}',
-                style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted),
-              ),
+  Widget _buildHarvestsTable() {
+    return Column(
+      children: [
+        // Table Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: CalamansiApp.bgSubtle,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            border: Border.all(color: CalamansiApp.border),
+          ),
+          child: Row(
+            children: const [
+              SizedBox(width: 140, child: Text('DATE & TIME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 130, child: Text('BATCH WEIGHT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 170, child: Text('ASSIGNED SIZE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 110, child: Text('SLR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 110, child: Text('MLR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
+              SizedBox(width: 130, child: Text('POLYNOMIAL (BEST)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CalamansiApp.textMuted))),
             ],
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                log['poly'] ?? '',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: CalamansiApp.primary, fontFamily: 'monospace'),
+        ),
+        // Table Rows
+        ...recentHarvests.take(10).map((log) => _buildHarvestTableRow(log)),
+      ],
+    );
+  }
+
+  Widget _buildHarvestTableRow(Map<String, dynamic> log) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(color: CalamansiApp.border),
+          right: BorderSide(color: CalamansiApp.border),
+          bottom: BorderSide(color: CalamansiApp.border),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              log['date'] ?? '',
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted),
+            ),
+          ),
+          SizedBox(
+            width: 130,
+            child: Text(
+              log['weight'] ?? '',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: CalamansiApp.textMain),
+            ),
+          ),
+          SizedBox(
+            width: 170,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: CalamansiApp.primaryLight,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  log['size'] ?? 'Medium Calamansi (10–14g)',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: CalamansiApp.primaryDark),
+                ),
               ),
-              const Text(
-                'Polynomial (Best)',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: CalamansiApp.accent),
+            ),
+          ),
+          SizedBox(
+            width: 110,
+            child: Text(
+              log['slr'] ?? '',
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted),
+            ),
+          ),
+          SizedBox(
+            width: 110,
+            child: Text(
+              log['mlr'] ?? '',
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: CalamansiApp.textMuted),
+            ),
+          ),
+          SizedBox(
+            width: 130,
+            child: Text(
+              log['poly'] ?? '',
+              style: const TextStyle(
+                fontSize: 13,
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w800,
+                color: CalamansiApp.primary,
               ),
-            ],
+            ),
           ),
         ],
       ),

@@ -67,44 +67,11 @@ class PredictionService {
     required String userId,
     required String username,
   }) async {
-    // 1. Try remote Edge Function if available
-    try {
-      final response = await http
-          .post(
-            Uri.parse(predictFunctionUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'weight_g': weightG,
-              'user_id': userId,
-              'username': username,
-              'save': true,
-            }),
-          )
-          .timeout(const Duration(seconds: 3));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        final results = (body['results'] as List)
-            .map((item) => PredictionResult.fromMap(item as Map<String, dynamic>))
-            .toList();
-        final sizeLabel = body['size_label'] as String? ?? 'Medium Calamansi (10–14g)';
-        final count = (weightG / 12.0).round();
-        
-        await _saveLocalLog(username, weightG, sizeLabel, results);
-        return PredictionResponse(
-          results: results,
-          sizeLabel: sizeLabel,
-          estimatedCalamansiCount: count,
-          totalWeightG: weightG,
-        );
-      }
-    } catch (_) {
-      // Fallback to local high-precision calculation engine
-    }
-
-    // 2. High-precision local research calculation (identical to web/app.js)
+    // Exact research calculation engine identical to web/app.js
+    // Calamansi fruits are evaluated on a per-unit basis using the representative
+    // medium sample weight from the Leyte Normal University dataset (12.0g).
     const representativeUnitWeight = 12.0; // Average weight for medium calamansi
-    final sizeCode = getCalamansiSizeCode(representativeUnitWeight);
+    final sizeCode = getCalamansiSizeCode(representativeUnitWeight); // 2: Medium
     final count = (weightG / representativeUnitWeight).round();
     final calamansiCountDouble = weightG / representativeUnitWeight;
 

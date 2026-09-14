@@ -82,6 +82,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               }
 
               final weightStr = row['weight']?.toString() ?? '${row['weight_g']} g';
+              final sizeLabel = row['size_label']?.toString() ?? row['size']?.toString() ?? 'Medium Calamansi (10–14g)';
               final dateStr = (row['date'] ?? row['created_at']?.toString().split('T').first) ?? '';
 
               return Container(
@@ -134,7 +135,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ],
                   ),
                   subtitle: Text(
-                    '$weightStr • $dateStr',
+                    '$weightStr • $sizeLabel • $dateStr',
                     style: const TextStyle(fontSize: 11, color: CalamansiApp.textMuted),
                   ),
                   trailing: Column(
