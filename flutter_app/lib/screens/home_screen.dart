@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .order('created_at', ascending: false)
           .limit(10);
 
-      if (rows is List && rows.isNotEmpty) {
+      if (rows.isNotEmpty) {
         final List<Map<String, dynamic>> list = [];
         for (final r in rows) {
           final weight = (r['weight_g'] as num?)?.toDouble() ?? 0.0;

@@ -56,14 +56,12 @@ class _AdminScreenState extends State<AdminScreen> {
           .select('username');
 
       final Map<String, int> counts = {};
-      if (predictions is List) {
-        for (final p in predictions) {
-          final u = p['username']?.toString() ?? '';
-          counts[u] = (counts[u] ?? 0) + 1;
-        }
+      for (final p in predictions) {
+        final u = p['username']?.toString() ?? '';
+        counts[u] = (counts[u] ?? 0) + 1;
       }
 
-      if (response is List && response.isNotEmpty) {
+      if (response.isNotEmpty) {
         final List<Map<String, dynamic>> dbList = [];
         for (final item in response) {
           final uname = item['username']?.toString() ?? '';
@@ -323,7 +321,7 @@ class _AdminScreenState extends State<AdminScreen> {
           .order('created_at', ascending: false)
           .limit(100);
 
-      if (rows is List && rows.isNotEmpty) {
+      if (rows.isNotEmpty) {
         final List<Map<String, dynamic>> list = [];
         for (final r in rows) {
           final weight = (r['weight_g'] as num?)?.toDouble() ?? 0.0;
