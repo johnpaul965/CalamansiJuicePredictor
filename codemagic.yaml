@@ -7,49 +7,33 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
-    working_directory: flutter_app
     scripts:
-      - name: Get Flutter packages
+      - name: Generate complete iOS project structure if missing
         script: |
+          cd flutter_app
+          # If Runner.xcodeproj is missing in the git repo, regenerate the official iOS platform files
+          if [ ! -f "ios/Runner.xcodeproj/project.pbxproj" ]; then
+            echo "Regenerating iOS platform project files..."
+            flutter create --platforms=ios .
+          fi
+      - name: Install Flutter packages
+        script: |
+          cd flutter_app
           flutter packages pub get
       - name: Flutter build iOS IPA (Unsigned)
         script: |
+          cd flutter_app
           flutter build ipa --release --no-codesign
     artifacts:
-      - build/ios/ipa/*.ipa
-      - build/ios/archive/*.xcarchive
+      - flutter_app/build/ios/ipa/*.ipa
+      - flutter_app/build/ios/archive/*.xcarchive
       - /Users/builder/clone/flutter_app/build/ios/ipa/*.ipa
       - /Users/builder/clone/flutter_app/build/ios/archive/*.xcarchive
     publishing:
       email:
         recipients:
           - johnpaultiu701@gmail.com
+          - johnpaultiu12mate@gmail.com
         notify:
           success: true
           failure: true
-
-  ios-adhoc-simulator:
-    name: iOS Simulator App (Fast Test)
-    max_build_duration: 20
-    instance_type: mac_mini_m1
-    environment:
-      flutter: stable
-      xcode: latest
-      cocoapods: default
-    working_directory: flutter_app
-    scripts:
-      - name: Get Flutter packages
-        script: |
-          flutter packages pub get
-      - name: Flutter build iOS Simulator
-        script: |
-          flutter build ios --simulator --release
-    artifacts:
-      - build/ios/iphonesimulator/*.app
-    publishing:
-      email:
-        recipients:
-          - johnpaultiu701@gmail.com
-        notify:
-          success: true
-          failure: false
