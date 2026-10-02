@@ -1,0 +1,26 @@
+workflows:
+  ios-release-ipa:
+    name: iOS Unsigned / Release IPA Build
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Flutter build iOS IPA (Unsigned)
+        script: |
+          flutter build ipa --release --no-codesign
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
+    publishing:
+      email:
+        recipients:
+          - johnpaultiu701@gmail.com
+        notify:
+          success: true
+          failure: true
