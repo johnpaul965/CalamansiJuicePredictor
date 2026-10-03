@@ -229,34 +229,41 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: CalamansiApp.primaryLight,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Center(
-                          child: Text('🍋', style: TextStyle(fontSize: 24)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Calamansi Yield Predictor',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: CalamansiApp.textMain),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: CalamansiApp.primaryLight,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          Text(
-                            'Enter batch weight to run all 3 regression models side by side',
-                            style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                          child: const Center(
+                            child: Text('🍋', style: TextStyle(fontSize: 24)),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Calamansi Yield Predictor',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: CalamansiApp.textMain),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Enter batch weight to run all 3 regression models',
+                                style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   if (!isNarrow)
                     Row(

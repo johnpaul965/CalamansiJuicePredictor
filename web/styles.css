@@ -1469,4 +1469,35 @@ body {
   .stat-cards-triad {
     grid-template-columns: 1fr;
   }
+  .flutter-appbar {
+    padding: 10px 14px;
+  }
+  .appbar-title {
+    font-size: 15px;
+  }
+  .appbar-subtitle {
+    font-size: 10px;
+    max-width: 170px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .admin-top-tab-bar {
+    overflow-x: auto;
+    padding: 10px 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-top-tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-page-content {
+    padding: 0 12px 24px;
+  }
+  .content-container {
+    padding: 16px 12px;
+  }
+  .flutter-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
 }

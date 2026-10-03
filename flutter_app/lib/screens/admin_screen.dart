@@ -449,34 +449,41 @@ class _AdminScreenState extends State<AdminScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: CalamansiApp.primaryLight,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Center(
-                          child: Text('🍋', style: TextStyle(fontSize: 24)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Admin Research & Governance Console',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: CalamansiApp.textMain),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: CalamansiApp.primaryLight,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          Text(
-                            'Leyte Normal University • Chapter 4 Evaluation & User Management',
-                            style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                          child: const Center(
+                            child: Text('🍋', style: TextStyle(fontSize: 24)),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Admin Research & Governance Console',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: CalamansiApp.textMain),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Leyte Normal University • Chapter 4 Evaluation',
+                                style: TextStyle(fontSize: 11, color: CalamansiApp.textMuted),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   if (!isNarrow)
                     Row(
@@ -636,10 +643,20 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               const SizedBox(height: 10),
               // Size Classification Table matching web
-              _sizeTableHeader(),
-              _sizeTableRow('Small (Size 1)', 'Weight ≤ 10.0 g', '412', '31.9%'),
-              _sizeTableRow('Medium (Size 2)', '10.1 g ≤ Weight ≤ 14.0 g', '568', '44.0%'),
-              _sizeTableRow('Large (Size 3)', 'Weight > 14.0 g', '312', '24.1%'),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: 520,
+                  child: Column(
+                    children: [
+                      _sizeTableHeader(),
+                      _sizeTableRow('Small (Size 1)', 'Weight ≤ 10.0 g', '412', '31.9%'),
+                      _sizeTableRow('Medium (Size 2)', '10.1 g ≤ Weight ≤ 14.0 g', '568', '44.0%'),
+                      _sizeTableRow('Large (Size 3)', 'Weight > 14.0 g', '312', '24.1%'),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -667,11 +684,21 @@ class _AdminScreenState extends State<AdminScreen> {
                 style: TextStyle(fontSize: 13, color: CalamansiApp.textMuted),
               ),
               const SizedBox(height: 16),
-              // Comparison Table Rows matching web
-              _algoTableHeader(),
-              _algoTableRow('Simple Linear Regression', 'Weight', '0.7099', '0.5294 ml', '0.6841 ml', '0.4680 ml²', '10.42%', 'Baseline', false),
-              _algoTableRow('Multiple Linear Regression', 'Weight, Size', '0.7100', '0.5292 ml', '0.6839 ml', '0.4677 ml²', '10.41%', 'Comparative', false),
-              _algoTableRow('Polynomial Regression (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', '0.6835 ml', '0.4672 ml²', '10.35%', '★ Best Performing', true),
+              // Comparison Table Rows matching web with horizontal scrolling on mobile
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: 680,
+                  child: Column(
+                    children: [
+                      _algoTableHeader(),
+                      _algoTableRow('Simple Linear Regression', 'Weight', '0.7099', '0.5294 ml', '0.6841 ml', '0.4680 ml²', '10.42%', 'Baseline', false),
+                      _algoTableRow('Multiple Linear Regression', 'Weight, Size', '0.7100', '0.5292 ml', '0.6839 ml', '0.4677 ml²', '10.41%', 'Comparative', false),
+                      _algoTableRow('Polynomial Regression (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', '0.6835 ml', '0.4672 ml²', '10.35%', '★ Best Performing', true),
+                    ],
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 24),
               const Text(
