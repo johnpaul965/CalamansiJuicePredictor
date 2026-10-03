@@ -470,14 +470,18 @@ class _AdminScreenState extends State<AdminScreen> {
                             children: const [
                               Text(
                                 'Admin Research & Governance Console',
-                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: CalamansiApp.textMain),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                'Leyte Normal University • Chapter 4 Evaluation',
-                                style: TextStyle(fontSize: 11, color: CalamansiApp.textMuted),
                                 maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14.5,
+                                  height: 1.25,
+                                  color: CalamansiApp.textMain,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Leyte Normal University',
+                                style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
                               ),
                             ],
                           ),
