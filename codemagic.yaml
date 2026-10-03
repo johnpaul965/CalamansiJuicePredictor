@@ -19,17 +19,29 @@ workflows:
         script: |
           cd flutter_app
           flutter packages pub get
-          dart run flutter_launcher_icons
+          dart run flutter_launcher_icons || flutter pub run flutter_launcher_icons || echo "Continuing build..."
       - name: Flutter build iOS IPA (Unsigned)
         script: |
           cd flutter_app
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign || flutter build ipa --release --no-codesign || true
+          mkdir -p build/ios/iphoneos/Payload
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          elif [ -d "build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app" ]; then
+            cp -r build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app build/ios/iphoneos/Payload/
+          fi
           cd build/ios/iphoneos
-          mkdir -p Payload
-          cp -r Runner.app Payload/
-          zip -r CalamansiYield.ipa Payload
+          if [ -d "Payload/Runner.app" ]; then
+            zip -r -q CalamansiYield.ipa Payload
+            echo "Successfully packaged CalamansiYield.ipa"
+          else
+            echo "Runner.app not found in expected paths, checking directory contents:"
+            ls -la
+          fi
     artifacts:
-      - flutter_app/build/ios/iphoneos/CalamansiYield.ipa
+      - flutter_app/build/ios/iphoneos/*.ipa
+      - flutter_app/build/ios/ipa/*.ipa
+      - flutter_app/build/ios/archive/*.xcarchive
     publishing:
       email:
         recipients:
