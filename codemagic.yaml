@@ -15,10 +15,11 @@ workflows:
             echo "Regenerating iOS platform project files..."
             flutter create --platforms=ios .
           fi
-      - name: Install Flutter packages
+      - name: Install Flutter packages and generate App Icons
         script: |
           cd flutter_app
           flutter packages pub get
+          dart run flutter_launcher_icons
       - name: Flutter build iOS IPA (Unsigned)
         script: |
           cd flutter_app
@@ -28,9 +29,7 @@ workflows:
           cp -r Runner.app Payload/
           zip -r CalamansiYield.ipa Payload
     artifacts:
-      - flutter_app/build/ios/iphoneos/*.ipa
-      - flutter_app/build/ios/ipa/*.ipa
-      - flutter_app/build/ios/archive/*.xcarchive
+      - flutter_app/build/ios/iphoneos/CalamansiYield.ipa
     publishing:
       email:
         recipients:
