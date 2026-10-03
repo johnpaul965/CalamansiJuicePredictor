@@ -8,39 +8,41 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Generate complete iOS project structure if missing
+      - name: Setup complete iOS project structure and workspace
         script: |
           cd flutter_app
-          if [ ! -f "ios/Runner.xcodeproj/project.pbxproj" ]; then
-            echo "Regenerating iOS platform project files..."
-            flutter create --platforms=ios .
-          fi
-      - name: Install Flutter packages and generate App Icons
+          mkdir -p ios/Runner.xcworkspace
+          cat << 'EOF' > ios/Runner.xcworkspace/contents.xcworkspacedata
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Workspace
+             version = "1.0">
+             <FileRef
+                location = "group:Runner.xcodeproj">
+             </FileRef>
+          </Workspace>
+          EOF
+          flutter create --platforms=ios .
+      - name: Install Flutter packages, launcher icons, and Pods
         script: |
           cd flutter_app
           flutter packages pub get
           dart run flutter_launcher_icons || flutter pub run flutter_launcher_icons || echo "Continuing build..."
+          if [ -f "ios/Podfile" ]; then
+            cd ios
+            pod install || true
+            cd ..
+          fi
       - name: Flutter build iOS IPA (Unsigned)
         script: |
           cd flutter_app
-          flutter build ios --release --no-codesign || flutter build ipa --release --no-codesign || true
-          mkdir -p build/ios/iphoneos/Payload
-          if [ -d "build/ios/iphoneos/Runner.app" ]; then
-            cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
-          elif [ -d "build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app" ]; then
-            cp -r build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app build/ios/iphoneos/Payload/
-          fi
+          flutter build ios --release --no-codesign
           cd build/ios/iphoneos
-          if [ -d "Payload/Runner.app" ]; then
-            zip -r -q CalamansiYield.ipa Payload
-            echo "Successfully packaged CalamansiYield.ipa"
-          else
-            echo "Runner.app not found in expected paths, checking directory contents:"
-            ls -la
-          fi
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r -q CalamansiYield.ipa Payload
+          echo "Successfully packaged CalamansiYield.ipa"
     artifacts:
       - flutter_app/build/ios/iphoneos/*.ipa
-      - flutter_app/build/ios/ipa/*.ipa
       - flutter_app/build/ios/archive/*.xcarchive
     publishing:
       email:
