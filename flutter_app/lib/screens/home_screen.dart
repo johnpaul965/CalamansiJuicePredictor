@@ -844,7 +844,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // 4. Recent Harvest Records Card embedded in user view matching Web
   Widget _buildRecentHarvestsCard() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
         color: CalamansiApp.bgCard,
         borderRadius: BorderRadius.circular(14),
@@ -858,21 +858,25 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Your Recent Harvests',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Recent batch extractions and yield estimates recorded in Supabase',
-                    style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Your Recent Harvests',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Recent batch extractions and yield estimates recorded in Supabase',
+                      style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted, height: 1.3),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, size: 20, color: CalamansiApp.textMuted),
                 tooltip: 'Refresh records',

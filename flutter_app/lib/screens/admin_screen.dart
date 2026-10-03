@@ -1371,21 +1371,25 @@ class _AdminScreenState extends State<AdminScreen> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'User Prediction History',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Logs of batch weights and outputs run on the system.',
-                    style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'User Prediction History',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: CalamansiApp.textMain),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Logs of batch weights and outputs run on the system.',
+                      style: TextStyle(fontSize: 12, color: CalamansiApp.textMuted),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               OutlinedButton(
                 onPressed: _clearLogs,
                 style: OutlinedButton.styleFrom(
