@@ -726,7 +726,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _statBox(String num, String label) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
         decoration: BoxDecoration(
           color: CalamansiApp.bgSubtle,
           borderRadius: BorderRadius.circular(10),
@@ -736,13 +736,15 @@ class _AdminScreenState extends State<AdminScreen> {
           children: [
             Text(
               num,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: CalamansiApp.primary, fontFamily: 'monospace'),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: CalamansiApp.primary, fontFamily: 'monospace'),
             ),
             const SizedBox(height: 4),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: CalamansiApp.textMuted),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: CalamansiApp.textMuted, height: 1.2),
             ),
           ],
         ),
