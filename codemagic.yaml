@@ -11,7 +11,6 @@ workflows:
       - name: Generate complete iOS project structure if missing
         script: |
           cd flutter_app
-          # If Runner.xcodeproj is missing in the git repo, regenerate the official iOS platform files
           if [ ! -f "ios/Runner.xcodeproj/project.pbxproj" ]; then
             echo "Regenerating iOS platform project files..."
             flutter create --platforms=ios .
@@ -23,12 +22,15 @@ workflows:
       - name: Flutter build iOS IPA (Unsigned)
         script: |
           cd flutter_app
-          flutter build ipa --release --no-codesign
+          flutter build ios --release --no-codesign
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r CalamansiYield.ipa Payload
     artifacts:
+      - flutter_app/build/ios/iphoneos/*.ipa
       - flutter_app/build/ios/ipa/*.ipa
       - flutter_app/build/ios/archive/*.xcarchive
-      - /Users/builder/clone/flutter_app/build/ios/ipa/*.ipa
-      - /Users/builder/clone/flutter_app/build/ios/archive/*.xcarchive
     publishing:
       email:
         recipients:
