@@ -82,7 +82,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               }
 
               final weightStr = row['weight']?.toString() ?? '${row['weight_g']} g';
-              final sizeLabel = row['size_label']?.toString() ?? row['size']?.toString() ?? 'Medium Calamansi (10–14g)';
+              final sizeLabel = row['size_label']?.toString() ?? row['size']?.toString() ?? 'Harvest Average (Mixed Sizes)';
               final dateStr = (row['date'] ?? row['created_at']?.toString().split('T').first) ?? '';
 
               return Container(

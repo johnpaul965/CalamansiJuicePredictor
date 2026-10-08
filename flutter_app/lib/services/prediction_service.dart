@@ -46,13 +46,13 @@ class PredictionService {
     return val > 0 ? val : 0.0;
   }
 
-  static double predictMultiple(double w, int s) {
+  static double predictMultiple(double w, double s) {
     final val = multipleWeight * w + multipleSize * s + multipleIntercept;
     return val > 0 ? val : 0.0;
   }
 
-  static double predictPoly(double w, int s) {
-    final features = [w, s.toDouble(), w * w, w * s, s * s.toDouble()];
+  static double predictPoly(double w, double s) {
+    final features = [w, s, w * w, w * s, s * s];
     double val = polyIntercept;
     for (int i = 0; i < features.length; i++) {
       val += polyCoefs[i] * features[i];
@@ -65,21 +65,20 @@ class PredictionService {
     required String userId,
     required String username,
   }) async {
-    // Exact research calculation engine identical to web/app.js
-    // Calamansi fruits are evaluated on a per-unit basis using the representative
-    // medium sample weight from the Leyte Normal University dataset (12.0g).
-    const representativeUnitWeight = 12.0; // Average weight for medium calamansi
-    final sizeCode = getCalamansiSizeCode(representativeUnitWeight); // 2: Medium
-    final count = (weightG / representativeUnitWeight).round();
+    // Calamansi fruits are evaluated using the empirical average harvest sample weight
+    // derived from the entire 1,292 harvest dataset from Leyte Normal University.
+    // Mean harvest fruit weight = 12.46g; Mean size index = 2.05 (reflects natural mix of Small, Medium & Large).
+    const representativeUnitWeight = 12.46; // Overall dataset average weight (g)
+    const averageSizeIndex = 2.05; // Weighted average size score
     final calamansiCountDouble = weightG / representativeUnitWeight;
 
     final slrJuice = predictSimple(representativeUnitWeight);
     final slrTotalMl = calamansiCountDouble * slrJuice;
 
-    final mlrJuice = predictMultiple(representativeUnitWeight, sizeCode);
+    final mlrJuice = predictMultiple(representativeUnitWeight, averageSizeIndex);
     final mlrTotalMl = calamansiCountDouble * mlrJuice;
 
-    final polyJuice = predictPoly(representativeUnitWeight, sizeCode);
+    final polyJuice = predictPoly(representativeUnitWeight, averageSizeIndex);
     final polyTotalMl = calamansiCountDouble * polyJuice;
 
     final results = [
@@ -88,7 +87,7 @@ class PredictionService {
       PredictionResult(algorithm: 'Polynomial Regression (d=2)', juiceMl: polyTotalMl),
     ];
 
-    const sizeLabel = 'Medium Calamansi (10–14g)';
+    const sizeLabel = 'General Harvest Average (Mixed Sizes)';
     await _saveLocalLog(username, weightG, sizeLabel, results);
 
     // Save directly to Supabase SQL predictions table

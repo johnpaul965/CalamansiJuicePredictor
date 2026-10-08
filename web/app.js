@@ -11,9 +11,9 @@
 // ──────────────── RESEARCH REGRESSION ENGINE ────────────────
 // Exact parameters from PredictionService.dart
 const MODEL_CONFIG = {
-  representativeUnitWeight: 12.0, // Average weight for medium calamansi in grams
-  sizeCode: 2, // 1: Small (<=10g), 2: Medium (<=14g), 3: Large (>14g)
-  sizeLabel: 'Medium Calamansi (10–14g)',
+  representativeUnitWeight: 12.46, // Empirical dataset average calamansi weight in grams (Leyte Normal University study)
+  sizeCode: 2.05, // Weighted average size index across 1,292 harvest samples
+  sizeLabel: 'General Harvest Average (Mixed Sizes)',
 
   // 1. Simple Linear Regression: Juice = 0.4569 * W - 0.6080
   simpleWeight: 0.4569,
@@ -85,10 +85,10 @@ const DEFAULT_LOGS = [
     user: 'farmer_juan',
     weightG: 1000,
     weight: '1.00 kg (1000g)',
-    size: 'Medium Calamansi (10–14g)',
-    slr: '389.20 ml',
-    mlr: '391.45 ml',
-    poly: '394.80 ml',
+    size: 'General Harvest Average (Mixed Sizes)',
+    slr: '408.10 ml',
+    mlr: '408.11 ml',
+    poly: '409.42 ml',
   },
   {
     id: 'log-2',
@@ -96,10 +96,10 @@ const DEFAULT_LOGS = [
     user: 'farmer_juan',
     weightG: 5000,
     weight: '5.00 kg (5000g)',
-    size: 'Medium Calamansi (10–14g)',
-    slr: '1946.00 ml',
-    mlr: '1957.25 ml',
-    poly: '1974.00 ml',
+    size: 'General Harvest Average (Mixed Sizes)',
+    slr: '2040.50 ml',
+    mlr: '2040.55 ml',
+    poly: '2047.10 ml',
   },
   {
     id: 'log-3',
@@ -107,10 +107,10 @@ const DEFAULT_LOGS = [
     user: 'tacloban_vendor',
     weightG: 2500,
     weight: '2.50 kg (2500g)',
-    size: 'Medium Calamansi (10–14g)',
-    slr: '973.00 ml',
-    mlr: '978.60 ml',
-    poly: '987.00 ml',
+    size: 'General Harvest Average (Mixed Sizes)',
+    slr: '1020.25 ml',
+    mlr: '1020.28 ml',
+    poly: '1023.55 ml',
   },
 ];
 
