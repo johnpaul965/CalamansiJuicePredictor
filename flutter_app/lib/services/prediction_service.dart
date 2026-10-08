@@ -71,6 +71,7 @@ class PredictionService {
     const representativeUnitWeight = 12.46; // Overall dataset average weight (g)
     const averageSizeIndex = 2.05; // Weighted average size score
     final calamansiCountDouble = weightG / representativeUnitWeight;
+    final count = calamansiCountDouble.round();
 
     final slrJuice = predictSimple(representativeUnitWeight);
     final slrTotalMl = calamansiCountDouble * slrJuice;
