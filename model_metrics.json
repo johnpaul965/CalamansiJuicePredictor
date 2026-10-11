@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "institution": "Leyte Normal University",
+    "study": "Tacloban City Calamansi Harvest Study",
+    "total_samples": 1292,
+    "training_samples": 1033,
+    "testing_samples": 259,
+    "best_model": "Polynomial Regression (d=2)",
+    "overall_mean_fruit_weight_g": 12.46,
+    "overall_mean_fruit_juice_ml": 5.1
+  },
+  "models": {
+    "Simple Linear Regression": {
+      "features": [
+        "Weight"
+      ],
+      "formula": "Juice = 0.4569 * Weight + (-0.6080)",
+      "metrics": {
+        "r2": 0.7099,
+        "mae": 0.5294,
+        "rmse": 0.6635,
+        "mse": 0.4403,
+        "mape": 10.42
+      },
+      "coefficients": {
+        "intercept": -0.608,
+        "weight": 0.4569
+      }
+    },
+    "Multiple Linear Regression": {
+      "features": [
+        "Weight",
+        "Size"
+      ],
+      "formula": "Juice = 0.4580 * Weight + (-0.0053) * Size + (-0.6108)",
+      "metrics": {
+        "r2": 0.71,
+        "mae": 0.5292,
+        "rmse": 0.6635,
+        "mse": 0.4402,
+        "mape": 10.42
+      },
+      "coefficients": {
+        "intercept": -0.6108,
+        "weight": 0.458,
+        "size": -0.0053
+      }
+    },
+    "Polynomial Regression (d=2)": {
+      "features": [
+        "Weight",
+        "Size",
+        "Weight^2",
+        "Weight*Size",
+        "Size^2"
+      ],
+      "formula": "Juice = -0.5480 + 0.43568*W + 0.08652*S + -0.003075*W\u00b2 + 0.04738*W*S + (-0.16409)*S\u00b2",
+      "metrics": {
+        "r2": 0.7102,
+        "mae": 0.5279,
+        "rmse": 0.6637,
+        "mse": 0.4405,
+        "mape": 10.39
+      },
+      "coefficients": {
+        "intercept": -0.548,
+        "weights": [
+          0.43568,
+          0.086517,
+          -0.003075,
+          0.047385,
+          -0.164087
+        ]
+      }
+    }
+  }
+}

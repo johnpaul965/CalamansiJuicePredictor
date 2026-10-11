@@ -78,41 +78,7 @@ const DEFAULT_USERS = [
   { username: 'tacloban_vendor', password: 'user123', role: 'user', status: 'Active', joined: '2026-09-03' },
 ];
 
-const DEFAULT_LOGS = [
-  {
-    id: 'log-1',
-    date: '2026-09-11 15:30',
-    user: 'farmer_juan',
-    weightG: 1000,
-    weight: '1.00 kg (1000g)',
-    size: 'General Harvest Average (Mixed Sizes)',
-    slr: '408.10 ml',
-    mlr: '408.11 ml',
-    poly: '409.42 ml',
-  },
-  {
-    id: 'log-2',
-    date: '2026-09-11 11:15',
-    user: 'farmer_juan',
-    weightG: 5000,
-    weight: '5.00 kg (5000g)',
-    size: 'General Harvest Average (Mixed Sizes)',
-    slr: '2040.50 ml',
-    mlr: '2040.55 ml',
-    poly: '2047.10 ml',
-  },
-  {
-    id: 'log-3',
-    date: '2026-09-11 09:45',
-    user: 'tacloban_vendor',
-    weightG: 2500,
-    weight: '2.50 kg (2500g)',
-    size: 'General Harvest Average (Mixed Sizes)',
-    slr: '1020.25 ml',
-    mlr: '1020.28 ml',
-    poly: '1023.55 ml',
-  },
-];
+const DEFAULT_LOGS = [];
 
 function getUsers() {
   const raw = localStorage.getItem('calamansi_app_users');
