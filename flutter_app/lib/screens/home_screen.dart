@@ -54,30 +54,28 @@ class _HomeScreenState extends State<HomeScreen> {
           .order('created_at', ascending: false)
           .limit(10);
 
-      if (rows.isNotEmpty) {
-        final List<Map<String, dynamic>> list = [];
-        for (final r in rows) {
-          final weight = (r['weight_g'] as num?)?.toDouble() ?? 0.0;
-          final juice = (r['predicted_juice'] as num?)?.toDouble() ?? 0.0;
-          final createdAt = r['created_at']?.toString() ?? '';
-          final date = createdAt.contains('T')
-              ? createdAt.replaceFirst('T', ' ').substring(0, 16)
-              : createdAt;
+      final List<Map<String, dynamic>> list = [];
+      for (final r in rows) {
+        final weight = (r['weight_g'] as num?)?.toDouble() ?? 0.0;
+        final juice = (r['predicted_juice'] as num?)?.toDouble() ?? 0.0;
+        final createdAt = r['created_at']?.toString() ?? '';
+        final date = createdAt.contains('T')
+            ? createdAt.replaceFirst('T', ' ').substring(0, 16)
+            : createdAt;
 
-          list.add({
-            'date': date,
-            'user': r['username']?.toString() ?? widget.user.username,
-            'weight': weight >= 1000 ? '${(weight / 1000).toStringAsFixed(2)} kg (${weight.toStringAsFixed(0)}g)' : '${weight.toStringAsFixed(0)} g',
-            'size': r['size_label']?.toString() ?? 'Harvest Average (Mixed Sizes)',
-            'slr': '${(juice * 0.98).toStringAsFixed(2)} ml',
-            'mlr': '${(juice * 0.99).toStringAsFixed(2)} ml',
-            'poly': '${juice.toStringAsFixed(2)} ml',
-          });
-        }
-        if (mounted) {
-          setState(() => recentHarvests = list);
-          return;
-        }
+        list.add({
+          'date': date,
+          'user': r['username']?.toString() ?? widget.user.username,
+          'weight': weight >= 1000 ? '${(weight / 1000).toStringAsFixed(2)} kg (${weight.toStringAsFixed(0)}g)' : '${weight.toStringAsFixed(0)} g',
+          'size': r['size_label']?.toString() ?? 'Harvest Average (Mixed Sizes)',
+          'slr': '${(juice * 0.98).toStringAsFixed(2)} ml',
+          'mlr': '${(juice * 0.99).toStringAsFixed(2)} ml',
+          'poly': '${juice.toStringAsFixed(2)} ml',
+        });
+      }
+      if (mounted) {
+        setState(() => recentHarvests = list);
+        return;
       }
     } catch (_) {}
 
@@ -93,28 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } else {
       if (mounted) {
-        setState(() {
-          recentHarvests = [
-            {
-              'date': '2026-09-11 15:30',
-              'user': widget.user.username,
-              'weight': '1.00 kg (1000g)',
-              'size': 'Harvest Average (Mixed Sizes)',
-              'slr': '408.10 ml',
-              'mlr': '408.11 ml',
-              'poly': '409.42 ml',
-            },
-            {
-              'date': '2026-09-11 11:15',
-              'user': widget.user.username,
-              'weight': '5.00 kg (5000g)',
-              'size': 'Harvest Average (Mixed Sizes)',
-              'slr': '2040.50 ml',
-              'mlr': '2040.55 ml',
-              'poly': '2047.10 ml',
-            },
-          ];
-        });
+        setState(() => recentHarvests = []);
       }
     }
   }

@@ -321,30 +321,28 @@ class _AdminScreenState extends State<AdminScreen> {
           .order('created_at', ascending: false)
           .limit(100);
 
-      if (rows.isNotEmpty) {
-        final List<Map<String, dynamic>> list = [];
-        for (final r in rows) {
-          final weight = (r['weight_g'] as num?)?.toDouble() ?? 0.0;
-          final juice = (r['predicted_juice'] as num?)?.toDouble() ?? 0.0;
-          final createdAt = r['created_at']?.toString() ?? '';
-          final date = createdAt.contains('T')
-              ? createdAt.replaceFirst('T', ' ').substring(0, 16)
-              : createdAt;
+      final List<Map<String, dynamic>> list = [];
+      for (final r in rows) {
+        final weight = (r['weight_g'] as num?)?.toDouble() ?? 0.0;
+        final juice = (r['predicted_juice'] as num?)?.toDouble() ?? 0.0;
+        final createdAt = r['created_at']?.toString() ?? '';
+        final date = createdAt.contains('T')
+            ? createdAt.replaceFirst('T', ' ').substring(0, 16)
+            : createdAt;
 
-          list.add({
-            'id': r['id']?.toString(),
-            'date': date,
-            'user': r['username']?.toString() ?? 'user',
-            'weight': weight >= 1000 ? '${(weight / 1000).toStringAsFixed(2)} kg (${weight.toStringAsFixed(0)}g)' : '${weight.toStringAsFixed(0)} g',
-            'size': r['size_label']?.toString() ?? 'Harvest Average (Mixed Sizes)',
-            'slr': '${(juice * 0.98).toStringAsFixed(2)} ml',
-            'mlr': '${(juice * 0.99).toStringAsFixed(2)} ml',
-            'poly': '${juice.toStringAsFixed(2)} ml',
-          });
-        }
-        if (mounted) setState(() => logsList = list);
-        return;
+        list.add({
+          'id': r['id']?.toString(),
+          'date': date,
+          'user': r['username']?.toString() ?? 'user',
+          'weight': weight >= 1000 ? '${(weight / 1000).toStringAsFixed(2)} kg (${weight.toStringAsFixed(0)}g)' : '${weight.toStringAsFixed(0)} g',
+          'size': r['size_label']?.toString() ?? 'Harvest Average (Mixed Sizes)',
+          'slr': '${(juice * 0.98).toStringAsFixed(2)} ml',
+          'mlr': '${(juice * 0.99).toStringAsFixed(2)} ml',
+          'poly': '${juice.toStringAsFixed(2)} ml',
+        });
       }
+      if (mounted) setState(() => logsList = list);
+      return;
     } catch (_) {
       // Offline fallback
     }
@@ -361,28 +359,7 @@ class _AdminScreenState extends State<AdminScreen> {
       }
     } else {
       if (mounted) {
-        setState(() {
-          logsList = [
-            {
-              'date': '2026-09-11 14:20',
-              'user': 'farmer_juan',
-              'weight': '1.00 kg (1000g)',
-              'size': 'Harvest Average (Mixed Sizes)',
-              'slr': '408.10 ml',
-              'mlr': '408.11 ml',
-              'poly': '409.42 ml',
-            },
-            {
-              'date': '2026-09-11 12:15',
-              'user': 'tacloban_vendor',
-              'weight': '2.50 kg (2500g)',
-              'size': 'Harvest Average (Mixed Sizes)',
-              'slr': '1020.25 ml',
-              'mlr': '1020.28 ml',
-              'poly': '1023.55 ml',
-            },
-          ];
-        });
+        setState(() => logsList = []);
       }
     }
   }
@@ -396,8 +373,8 @@ class _AdminScreenState extends State<AdminScreen> {
     } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('local_prediction_logs');
-    setState(() => logsList = []);
+    await prefs.setString('local_prediction_logs', '[]');
+    if (mounted) setState(() => logsList = []);
   }
 
   @override
