@@ -66,10 +66,10 @@ class PredictionService {
     required String username,
   }) async {
     // Calamansi fruits are evaluated using the empirical average harvest sample weight
-    // derived from the entire 1,292 harvest dataset from Leyte Normal University.
-    // Mean harvest fruit weight = 12.46g; Mean size index = 2.05 (reflects natural mix of Small, Medium & Large).
-    const representativeUnitWeight = 12.46; // Overall dataset average weight (g)
-    const averageSizeIndex = 2.05; // Weighted average size score
+    // derived from the entire 1,522 harvest dataset from Leyte Normal University.
+    // Mean harvest fruit weight = 12.65g; Mean size index = 2.08 (reflects natural mix of Small, Medium & Large).
+    const representativeUnitWeight = 12.65; // Overall dataset average weight (g)
+    const averageSizeIndex = 2.08; // Weighted average size score
     final calamansiCountDouble = weightG / representativeUnitWeight;
     final count = calamansiCountDouble.round();
 

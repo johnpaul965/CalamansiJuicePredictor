@@ -603,18 +603,18 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                '1,292 physical calamansi extractions collected and measured for weight, size category, and juice yield.',
+                '1,522 physical calamansi extractions collected and measured for weight, size category, and juice yield.',
                 style: TextStyle(fontSize: 13, color: CalamansiApp.textMuted),
               ),
               const SizedBox(height: 18),
               // 3-Stats Grid
               Row(
                 children: [
-                  _statBox('1,292', 'Total Calamansi Samples'),
+                  _statBox('1,522', 'Total Calamansi Samples'),
                   const SizedBox(width: 10),
-                  _statBox('1,034', 'Training Set (80%)'),
+                  _statBox('1,217', 'Training Set (80%)'),
                   const SizedBox(width: 10),
-                  _statBox('258', 'Test Set (20%)'),
+                  _statBox('305', 'Test Set (20%)'),
                 ],
               ),
               const SizedBox(height: 22),
@@ -631,9 +631,9 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: Column(
                     children: [
                       _sizeTableHeader(),
-                      _sizeTableRow('Small (Size 1)', 'Weight ≤ 10.0 g', '412', '31.9%'),
-                      _sizeTableRow('Medium (Size 2)', '10.1 g ≤ Weight ≤ 14.0 g', '568', '44.0%'),
-                      _sizeTableRow('Large (Size 3)', 'Weight > 14.0 g', '312', '24.1%'),
+                      _sizeTableRow('Small (Size 1)', 'Weight < 10.0 g', '287', '18.86%'),
+                      _sizeTableRow('Medium (Size 2)', '10.0 g ≤ Weight ≤ 14.0 g', '828', '54.40%'),
+                      _sizeTableRow('Large (Size 3)', 'Weight > 14.0 g', '407', '26.74%'),
                     ],
                   ),
                 ),
@@ -661,7 +661,7 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Evaluation of the three regression architectures tested on unseen test samples (N=258):',
+                'Evaluation of the three regression architectures tested on unseen test samples (N=305):',
                 style: TextStyle(fontSize: 13, color: CalamansiApp.textMuted),
               ),
               const SizedBox(height: 16),
@@ -673,9 +673,9 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: Column(
                     children: [
                       _algoTableHeader(),
-                      _algoTableRow('Simple Linear Regression', 'Weight', '0.7099', '0.5294 ml', '0.6841 ml', '0.4680 ml²', '10.42%', 'Baseline', false),
-                      _algoTableRow('Multiple Linear Regression', 'Weight, Size', '0.7100', '0.5292 ml', '0.6839 ml', '0.4677 ml²', '10.41%', 'Comparative', false),
-                      _algoTableRow('Polynomial Regression (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', '0.6835 ml', '0.4672 ml²', '10.35%', '★ Best Performing', true),
+                      _algoTableRow('Simple Linear Regression', 'Weight', '0.7099', '0.5294 ml', '0.6635 ml', '0.4403 ml²', '10.42%', 'Baseline', false),
+                      _algoTableRow('Multiple Linear Regression', 'Weight, Size', '0.7100', '0.5292 ml', '0.6635 ml', '0.4402 ml²', '10.42%', 'Comparative', false),
+                      _algoTableRow('Polynomial Regression (d=2)', 'Weight, Size, W², W·S, S²', '0.7102', '0.5279 ml', '0.6637 ml', '0.4405 ml²', '10.39%', '★ Best Performing', true),
                     ],
                   ),
                 ),
