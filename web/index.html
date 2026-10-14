@@ -216,11 +216,11 @@
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">RMSE</span>
-                  <span class="stat-value">0.6841 ml</span>
+                  <span class="stat-value">0.6635 ml</span>
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">MSE</span>
-                  <span class="stat-value">0.4680 ml²</span>
+                  <span class="stat-value">0.4403 ml²</span>
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">MAPE</span>
@@ -248,15 +248,15 @@
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">RMSE</span>
-                  <span class="stat-value">0.6839 ml</span>
+                  <span class="stat-value">0.6635 ml</span>
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">MSE</span>
-                  <span class="stat-value">0.4677 ml²</span>
+                  <span class="stat-value">0.4402 ml²</span>
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">MAPE</span>
-                  <span class="stat-value">10.41%</span>
+                  <span class="stat-value">10.42%</span>
                 </div>
               </div>
 
@@ -283,15 +283,15 @@
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">RMSE</span>
-                  <span class="stat-value highlight">0.6835 ml</span>
+                  <span class="stat-value highlight">0.6637 ml</span>
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">MSE</span>
-                  <span class="stat-value highlight">0.4672 ml²</span>
+                  <span class="stat-value highlight">0.4405 ml²</span>
                 </div>
                 <div class="stat-pair">
                   <span class="stat-name">MAPE</span>
-                  <span class="stat-value highlight">10.35%</span>
+                  <span class="stat-value highlight">10.39%</span>
                 </div>
               </div>
             </div>
@@ -300,7 +300,7 @@
             <div class="research-callout">
               <span class="callout-icon">💡</span>
               <div class="callout-content">
-                <strong>Why Polynomial Regression (d=2) is Recommended:</strong> Evaluated on 258 unseen test samples, 2nd-degree polynomial regression achieved the highest coefficient of determination (R² = 0.7102) and lowest test error (MAE = 0.5279 ml), accurately capturing non-linear density curves in calamansi juice extractions.
+                <strong>Why Polynomial Regression (d=2) is Recommended:</strong> Evaluated on 305 unseen test samples (20% partition of the 1,522 empirical dataset), 2nd-degree polynomial regression achieved the highest coefficient of determination (R² = 0.7102) and lowest test error (MAE = 0.5279 ml), accurately capturing non-linear density curves in calamansi juice extractions.
               </div>
             </div>
           </section>
@@ -340,22 +340,22 @@
         <div class="content-container">
           <div class="view-header-title">
             <h2>Model Results</h2>
-            <p class="view-header-sub">🕒 Last trained: 2026-09-01 • Leyte Normal University Study</p>
+            <p class="view-header-sub">🕒 Calibrated on 1,522 Empirical Samples • Leyte Normal University Study</p>
           </div>
 
           <!-- Dataset Summary -->
           <h3 class="section-heading">Dataset Summary</h3>
           <div class="stat-cards-triad">
             <div class="stat-metric-card">
-              <div class="metric-val">1,292</div>
+              <div class="metric-val">1,522</div>
               <div class="metric-name">Total Samples</div>
             </div>
             <div class="stat-metric-card">
-              <div class="metric-val">1,034</div>
+              <div class="metric-val">1,217</div>
               <div class="metric-name">Training (80%)</div>
             </div>
             <div class="stat-metric-card">
-              <div class="metric-val">258</div>
+              <div class="metric-val">305</div>
               <div class="metric-name">Test (20%)</div>
             </div>
           </div>
@@ -373,9 +373,9 @@
               <div class="metric-chips-wrap">
                 <span class="metric-chip"><strong>R²</strong>: 0.7102</span>
                 <span class="metric-chip"><strong>MAE</strong>: 0.5279 ml</span>
-                <span class="metric-chip"><strong>RMSE</strong>: 0.6835 ml</span>
-                <span class="metric-chip"><strong>MSE</strong>: 0.4672 ml²</span>
-                <span class="metric-chip"><strong>MAPE</strong>: 10.35%</span>
+                <span class="metric-chip"><strong>RMSE</strong>: 0.6637 ml</span>
+                <span class="metric-chip"><strong>MSE</strong>: 0.4405 ml²</span>
+                <span class="metric-chip"><strong>MAPE</strong>: 10.39%</span>
               </div>
             </div>
 
@@ -387,9 +387,9 @@
               <div class="metric-chips-wrap">
                 <span class="metric-chip"><strong>R²</strong>: 0.7100</span>
                 <span class="metric-chip"><strong>MAE</strong>: 0.5292 ml</span>
-                <span class="metric-chip"><strong>RMSE</strong>: 0.6839 ml</span>
-                <span class="metric-chip"><strong>MSE</strong>: 0.4677 ml²</span>
-                <span class="metric-chip"><strong>MAPE</strong>: 10.41%</span>
+                <span class="metric-chip"><strong>RMSE</strong>: 0.6635 ml</span>
+                <span class="metric-chip"><strong>MSE</strong>: 0.4402 ml²</span>
+                <span class="metric-chip"><strong>MAPE</strong>: 10.42%</span>
               </div>
             </div>
 
@@ -401,8 +401,8 @@
               <div class="metric-chips-wrap">
                 <span class="metric-chip"><strong>R²</strong>: 0.7099</span>
                 <span class="metric-chip"><strong>MAE</strong>: 0.5294 ml</span>
-                <span class="metric-chip"><strong>RMSE</strong>: 0.6841 ml</span>
-                <span class="metric-chip"><strong>MSE</strong>: 0.4680 ml²</span>
+                <span class="metric-chip"><strong>RMSE</strong>: 0.6635 ml</span>
+                <span class="metric-chip"><strong>MSE</strong>: 0.4403 ml²</span>
                 <span class="metric-chip"><strong>MAPE</strong>: 10.42%</span>
               </div>
             </div>
@@ -474,19 +474,19 @@
           <!-- Card 1: Dataset Summary (Tacloban City Harvest Study) -->
           <section class="admin-main-card">
             <h2 class="admin-card-title">Dataset Summary (Tacloban City Harvest Study)</h2>
-            <p class="admin-card-subtitle">1,292 physical calamansi extractions collected and measured for weight, size category, and juice yield.</p>
+            <p class="admin-card-subtitle">1,522 physical calamansi extractions collected and measured for weight, size category, and juice yield.</p>
 
             <div class="admin-stat-triad">
               <div class="admin-stat-box">
-                <div class="admin-stat-num">1,292</div>
+                <div class="admin-stat-num">1,522</div>
                 <div class="admin-stat-lbl">Total Calamansi Samples</div>
               </div>
               <div class="admin-stat-box">
-                <div class="admin-stat-num">1,034</div>
+                <div class="admin-stat-num">1,217</div>
                 <div class="admin-stat-lbl">Training Set (80%)</div>
               </div>
               <div class="admin-stat-box">
-                <div class="admin-stat-num">258</div>
+                <div class="admin-stat-num">305</div>
                 <div class="admin-stat-lbl">Test Set (20%)</div>
               </div>
             </div>
@@ -506,21 +506,21 @@
                 <tbody>
                   <tr>
                     <td class="font-bold">Small (Size 1)</td>
-                    <td class="font-mono text-muted">Weight ≤ 10.0 g</td>
-                    <td class="font-mono">412</td>
-                    <td class="font-mono text-right text-green font-bold">31.9%</td>
+                    <td class="font-mono text-muted">Weight &lt; 10.0 g</td>
+                    <td class="font-mono">287</td>
+                    <td class="font-mono text-right text-green font-bold">18.86%</td>
                   </tr>
                   <tr>
                     <td class="font-bold">Medium (Size 2)</td>
-                    <td class="font-mono text-muted">10.1 g ≤ Weight ≤ 14.0 g</td>
-                    <td class="font-mono">568</td>
-                    <td class="font-mono text-right text-green font-bold">44.0%</td>
+                    <td class="font-mono text-muted">10.0 g ≤ Weight ≤ 14.0 g</td>
+                    <td class="font-mono">828</td>
+                    <td class="font-mono text-right text-green font-bold">54.40%</td>
                   </tr>
                   <tr>
                     <td class="font-bold">Large (Size 3)</td>
-                    <td class="font-mono text-muted">Weight > 14.0 g</td>
-                    <td class="font-mono">312</td>
-                    <td class="font-mono text-right text-green font-bold">24.1%</td>
+                    <td class="font-mono text-muted">Weight &gt; 14.0 g</td>
+                    <td class="font-mono">407</td>
+                    <td class="font-mono text-right text-green font-bold">26.74%</td>
                   </tr>
                 </tbody>
               </table>
@@ -530,7 +530,7 @@
           <!-- Card 2: Algorithm Performance Comparison -->
           <section class="admin-main-card">
             <h2 class="admin-card-title">Algorithm Performance Comparison</h2>
-            <p class="admin-card-subtitle">Evaluation of the three regression architectures tested on unseen test samples (N=258):</p>
+            <p class="admin-card-subtitle">Evaluation of the three regression architectures tested on unseen test samples (N=305):</p>
 
             <div class="admin-table-container">
               <table class="admin-clean-table">
@@ -552,8 +552,8 @@
                     <td class="text-muted">Weight</td>
                     <td class="font-mono text-right">0.7099</td>
                     <td class="font-mono text-right">0.5294 ml</td>
-                    <td class="font-mono text-right">0.6841 ml</td>
-                    <td class="font-mono text-right">0.4680 ml²</td>
+                    <td class="font-mono text-right">0.6635 ml</td>
+                    <td class="font-mono text-right">0.4403 ml²</td>
                     <td class="font-mono text-right">10.42%</td>
                     <td style="text-align: right;"><span class="badge-tag">Baseline</span></td>
                   </tr>
@@ -562,9 +562,9 @@
                     <td class="text-muted">Weight, Size</td>
                     <td class="font-mono text-right">0.7100</td>
                     <td class="font-mono text-right">0.5292 ml</td>
-                    <td class="font-mono text-right">0.6839 ml</td>
-                    <td class="font-mono text-right">0.4677 ml²</td>
-                    <td class="font-mono text-right">10.41%</td>
+                    <td class="font-mono text-right">0.6635 ml</td>
+                    <td class="font-mono text-right">0.4402 ml²</td>
+                    <td class="font-mono text-right">10.42%</td>
                     <td style="text-align: right;"><span class="badge-tag">Comparative</span></td>
                   </tr>
                   <tr class="winner-row">
@@ -572,9 +572,9 @@
                     <td class="text-green">Weight, Size, W², W·S, S²</td>
                     <td class="font-mono text-right text-green font-bold">0.7102</td>
                     <td class="font-mono text-right text-green font-bold">0.5279 ml</td>
-                    <td class="font-mono text-right text-green font-bold">0.6835 ml</td>
-                    <td class="font-mono text-right text-green font-bold">0.4672 ml²</td>
-                    <td class="font-mono text-right text-green font-bold">10.35%</td>
+                    <td class="font-mono text-right text-green font-bold">0.6637 ml</td>
+                    <td class="font-mono text-right text-green font-bold">0.4405 ml²</td>
+                    <td class="font-mono text-right text-green font-bold">10.39%</td>
                     <td style="text-align: right;"><span class="badge-tag winner-badge">★ Best Performing</span></td>
                   </tr>
                 </tbody>

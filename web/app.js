@@ -11,8 +11,8 @@
 // ──────────────── RESEARCH REGRESSION ENGINE ────────────────
 // Exact parameters from PredictionService.dart
 const MODEL_CONFIG = {
-  representativeUnitWeight: 12.46, // Empirical dataset average calamansi weight in grams (Leyte Normal University study)
-  sizeCode: 2.05, // Weighted average size index across 1,292 harvest samples
+  representativeUnitWeight: 12.65, // Empirical dataset average calamansi weight in grams (Leyte Normal University study, 1,522 samples)
+  sizeCode: 2.08, // Weighted average size index across 1,522 harvest samples (Small: 287, Medium: 828, Large: 407)
   sizeLabel: 'General Harvest Average (Mixed Sizes)',
 
   // 1. Simple Linear Regression: Juice = 0.4569 * W - 0.6080
