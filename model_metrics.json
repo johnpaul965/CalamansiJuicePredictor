@@ -2,12 +2,12 @@
   "metadata": {
     "institution": "Leyte Normal University",
     "study": "Tacloban City Calamansi Harvest Study",
-    "total_samples": 1292,
-    "training_samples": 1033,
-    "testing_samples": 259,
+    "total_samples": 1522,
+    "training_samples": 1217,
+    "testing_samples": 305,
     "best_model": "Polynomial Regression (d=2)",
-    "overall_mean_fruit_weight_g": 12.46,
-    "overall_mean_fruit_juice_ml": 5.1
+    "overall_mean_fruit_weight_g": 12.65,
+    "overall_mean_fruit_juice_ml": 5.22
   },
   "models": {
     "Simple Linear Regression": {
