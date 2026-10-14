@@ -192,9 +192,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   // Universal Navigation Header matching Web Dashboard
   Widget _buildWebHeader() {

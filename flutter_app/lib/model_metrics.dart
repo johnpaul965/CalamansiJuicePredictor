@@ -24,10 +24,10 @@ class ModelMetrics {
     },
   };
   static const best = 'Polynomial Regression (d=2)';
-  static const samples = 1292;
-  static const training = 1033;
-  static const testing = 259;
-  static const distribution = {'Small': 265, 'Medium': 694, 'Large': 333};
+  static const samples = 1522;
+  static const training = 1217;
+  static const testing = 305;
+  static const distribution = {'Small': 287, 'Medium': 828, 'Large': 407};
 
   static const simpleCoefWeight = 0.4569;
   static const simpleIntercept = -0.608;
