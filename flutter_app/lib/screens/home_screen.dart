@@ -112,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _setPresetWeight(double val) {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       weight.text = val >= 1 ? val.toStringAsFixed(0) : val.toString();
       error = null;
@@ -120,6 +121,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> runPrediction() async {
+    // Dismiss iOS & Android numeric keyboard immediately
+    FocusManager.instance.primaryFocus?.unfocus();
+
     final value = double.tryParse(weight.text);
     if (value == null || value <= 0) {
       setState(() => error = 'Please enter a valid weight greater than zero.');
@@ -145,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openHistory() {
+    FocusManager.instance.primaryFocus?.unfocus();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
@@ -159,15 +164,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: CalamansiApp.bgPage,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 960),
-              child: Column(
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Scaffold(
+        backgroundColor: CalamansiApp.bgPage,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildWebHeader(),
@@ -384,7 +393,11 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: weight,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
-            onSubmitted: (_) => runPrediction(),
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+            onSubmitted: (_) {
+              FocusManager.instance.primaryFocus?.unfocus();
+              runPrediction();
+            },
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: 'monospace'),
             decoration: InputDecoration(
               hintText: unit == 'kg' ? 'e.g. 1 (for 1 kg)' : 'e.g. 1000 (for 1000g)',
